@@ -131,6 +131,7 @@ CMDS = {
             " > /dev/null && echo 1 || echo 0; "
             "dpkg -P couchbase-server; dpkg -P enterprise-analytics; "
             "rm -rf /var/lib/dpkg/info/couchbase-server*;"
+            "du -ch /data | grep total; rm -rf /data/*;"
             "dpkg --configure -a; apt-get update; "
             "journalctl --vacuum-size=100M; journalctl --vacuum-time=10d; "
             "grep 'kernel.dmesg_restrict=0' /etc/sysctl.conf || "
@@ -194,8 +195,8 @@ CMDS = {
             "yes | yum remove 'enterprise-analytics*' > /dev/null; " +
             "rm -rf /tmp/tmp* ; " +
             "rm -rf " + DEFAULT_INSTALL_DIR["LINUX_DISTROS"] + "; " +
-            "rm -rf " + DEFAULT_NONROOT_INSTALL_DIR["LINUX_DISTROS"] + " > /dev/null && echo 1 || echo 0;" +
-            "du -ch /data | grep total; rm -rf /data/*;",
+            "du -ch /data | grep total; rm -rf /data/*;" +
+            "rm -rf " + DEFAULT_NONROOT_INSTALL_DIR["LINUX_DISTROS"] + " > /dev/null && echo 1 || echo 0",
         "pre_install": None,
         "install": "yes | yum localinstall -y buildpath > /dev/null && echo 1 || echo 0",
         "set_vm_swappiness_and_thp":
