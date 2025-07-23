@@ -34,7 +34,7 @@ ADDL_SERVER_MANAGER = '172.23.104.162:8081'
 TEST_SUITE_DB = '172.23.104.162'
 SERVER_MANAGER_USER_NAME = 'Administrator'
 SERVER_MANAGER_PASSWORD = "esabhcuoc"
-TIMEOUT = 60
+TIMEOUT = 120
 SSH_NUM_RETRIES = 3
 SSH_POLL_INTERVAL = 20
 
@@ -464,6 +464,8 @@ def main():
     parser.add_option('-i', '--retries', dest='retries', default='1')
     parser.add_option('-q', '--fresh_run', dest='fresh_run',
                       default=True, action='store_false')
+    parser.add_option('--rerun_condition', dest="rerun_condition",
+                      default="all")
     parser.add_option('-k', '--include_tests', dest='include_tests', default=None)
     parser.add_option('-x', '--server_manager', dest='SERVER_MANAGER',
                       default='172.23.104.162:8081')
@@ -619,10 +621,43 @@ def main():
             tests_dict_list = extract_individual_tests_from_query_result(
                 columnar_rel_version, row)
             testsToLaunch.extend(tests_dict_list)
-        except Exception as e:
+        except Exception:
             print('exception in querying tests, possible bad record')
             print((traceback.format_exc()))
             print(row)
+
+    if not options.fresh_run:
+        # Filter out jobs which have already passed in rerun (not a fresh_run)
+        job_index_to_pop = list()
+        for job_index, test_to_launch in enumerate(testsToLaunch):
+            # build the dashboard descriptor
+            dashboard_desc = urllib.parse.quote(
+                test_to_launch['subcomponent'])
+            if options.dashboardReportedParameters is not None:
+                for o in options.dashboardReportedParameters.split(','):
+                    dashboard_desc += '_' + o.split('=')[1]
+
+            if runTimeTestRunnerParameters is None:
+                parameters = test_to_launch['parameters']
+            else:
+                if test_to_launch['parameters'] == 'None':
+                    parameters = runTimeTestRunnerParameters
+                else:
+                    parameters = test_to_launch['parameters'] \
+                        + ',' + runTimeTestRunnerParameters
+            dispatch_job = find_rerun_job.should_dispatch_job(
+                options.os,
+                test_to_launch['component'],
+                dashboard_desc,
+                options.version,
+                parameters)
+            if not dispatch_job:
+                job_index_to_pop.append(job_index)
+
+        # Popping in reverse so the indexes won't mess up
+        job_index_to_pop.reverse()
+        for job_index in job_index_to_pop:
+            testsToLaunch.pop(job_index)
 
     total_req_servercount = 0
     total_req_addservercount = 0
@@ -698,9 +733,7 @@ def main():
 
     while len(testsToLaunch) > 0:
         try:
-            if not options.noLaunch:
-                print("\n\n *** Before dispatch, checking for the servers to run a  test suite\n")
-            else:
+            if options.noLaunch:
                 i = 0
                 print("\n\n *** Dispatching job#{} of {} with {} servers (total={}) and {} "
                       "additional "
@@ -802,6 +835,11 @@ def main():
                     break
 
             if haveTestToLaunch:
+                if options.noLaunch:
+                    job_index += 1
+                    testsToLaunch.pop(i)
+                    continue
+
                 print("\n\n *** Dispatching job#{} of {} with {} servers "
                       "(total={}) and {} additional servers(total={}):  {}-{} with {}\n"
                       .format(job_index, total_jobs_count,
@@ -834,11 +872,25 @@ def main():
                         else:
                             parameters = testsToLaunch[i][
                                              'parameters'] + ',' + runTimeTestRunnerParameters
+                    rerun_condition = options.rerun_condition
+                    only_failed = False
+                    only_pending = False
+                    only_unstable = False
+                    only_install_failed = False
+                    if rerun_condition == "FAILED":
+                        only_failed = True
+                    elif rerun_condition == "UNSTABLE":
+                        only_unstable = True
+                    elif rerun_condition == "PENDING":
+                        only_pending = True
+                    elif rerun_condition == "INST_FAIL":
+                        only_install_failed = True
                     dispatch_job = \
                         find_rerun_job.should_dispatch_job(
                             options.os, testsToLaunch[i][
                                 'component'], dashboardDescriptor
-                            , options.version, parameters)
+                            , options.version, parameters,
+                            only_pending, only_failed, only_unstable, only_install_failed)
 
                 # and this is the Jenkins descriptor
                 descriptor = testsToLaunch[i]['component'] + '-' + testsToLaunch[i]['subcomponent'] + '-' + time.strftime('%b-%d-%X') + '-' + options.version
@@ -913,11 +965,20 @@ def main():
                         parameters = testsToLaunch[i]['parameters'] + ',' + runTimeTestRunnerParameters
 
                 branch_to_trigger = options.branch
+                slave_to_use = testsToLaunch[i]['slave']
                 if (testsToLaunch[i]['framework'] == "TAF"
                         and float(options.version[:3]) >= 8
                         and options.branch == "master"
                         and testsToLaunch[i]["support_py3"] == "true"):
+                    # TAF jobs with support_py3=true
                     branch_to_trigger = "master_py3_dev"
+                elif (testsToLaunch[i]['framework'] == "testrunner"
+                        and float(options.version[:3]) >= 8
+                        and options.branch == "sdk4_migration"
+                        and testsToLaunch[i]["support_py3"] == "true"):
+                    # testrunner jobs with support_py3=true
+                    # branch_to_trigger = "sdk4_migration"
+                    slave_to_use = "P0_sdk4"
                 url = launchString.format(options.version,
                                           testsToLaunch[i]['confFile'],
                                           descriptor,
@@ -929,7 +990,7 @@ def main():
                                           testsToLaunch[i]['initNodes'],
                                           testsToLaunch[i]['installParameters'],
                                           branch_to_trigger,
-                                          testsToLaunch[i]['slave'],
+                                          slave_to_use,
                                           urllib.parse.quote(testsToLaunch[i]['owner']),
                                           urllib.parse.quote(
                                               testsToLaunch[i]['mailing_list']),
