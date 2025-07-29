@@ -1,3 +1,4 @@
+import os
 import sys
 from time import sleep
 
@@ -175,15 +176,30 @@ class RegressionDispatcher(object):
             result_data["info"] = "Confirm params failed!"
             return result_data
 
-        jenkins_obj = Jenkins(JenkinsConstants.OLD_JENKINS_URL)
-        last_known_build = jenkins_obj.get_job_info(JenkinsConstants.DEFAULT_DISPATCHER_JOB)["builds"][0]["url"]
+        username = os.getenv("jenkins_username")
+        password = os.getenv("jenkins_password")
+
+        jenkins_obj = Jenkins(JenkinsConstants.OLD_JENKINS_URL,
+                              username, password)
+        builds = jenkins_obj.get_job_info(
+            JenkinsConstants.DEFAULT_DISPATCHER_JOB)["builds"]
+        if builds:
+            last_known_build = builds[0]["url"]
+        else:
+            last_known_build = None
 
         possible_builds = list()
         req_result = requests.get(f"{JenkinsConstants.OLD_JENKINS_URL}/job/{JenkinsConstants.DEFAULT_DISPATCHER_JOB}/buildWithParameters?", params=build_params)
         # Sleep to make sure we get a new build after the last known build
         sleep(2)
         if 200 <= int(req_result.status_code) <= 210:
-            last_5_builds = jenkins_obj.get_job_info(JenkinsConstants.DEFAULT_DISPATCHER_JOB)["builds"][:5]
+            builds = jenkins_obj.get_job_info(
+                JenkinsConstants.DEFAULT_DISPATCHER_JOB)["builds"]
+            if builds:
+                last_5_builds = jenkins_obj.get_job_info(
+                    JenkinsConstants.DEFAULT_DISPATCHER_JOB)["builds"][:5]
+            else:
+                last_5_builds = []
             for t_build in last_5_builds:
                 b_url = t_build["url"]
                 if b_url == last_known_build:
