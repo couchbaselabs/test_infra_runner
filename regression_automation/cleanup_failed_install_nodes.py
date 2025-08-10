@@ -65,7 +65,7 @@ def main():
     bucket_name = os.getenv('CB_BUCKET_NAME')
 
     pool_ids_to_monitor = ["regression", "12hrreg", "magmareg",
-                           "upgrade", "magmaUpgrade", "12hour"]
+                           "upgrade", "magmaUpgrade", "12hour", "magmanew", "elastic-fts"]
 
     sdk_conn = Cluster(f'couchbase://{ip}',
                        authenticator=PasswordAuthenticator(username, password))
