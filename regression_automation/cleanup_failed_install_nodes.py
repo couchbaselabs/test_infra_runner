@@ -47,9 +47,13 @@ def cleanup_node(node_info):
 
     try:
         ssh_sess = RemoteMachineShellConnection(server)
-        ssh_sess.execute_command("iptables -F ; pkill -9 memcached")
+        ssh_sess.execute_command("pkill -9 memcached")
+        ssh_sess.execute_command("iptables -F ; ip6tables -F ; iptables -t nat -F ; iptables -t mangle -F ; iptables -X")
+        ssh_sess.execute_command("ip6tables -t nat -F ; ip6tables -t mangle -F ; ip6tables -X ")
         sleep(2)
         ssh_sess.execute_command("service couchbase-server stop")
+        ssh_sess.execute_command("journalctl --rotate ; journalctl --vacuum-time=1s")
+        ssh_sess.execute_command("apt-get clean ; rm -rf /var/lib/apt/lists/* ")
         ssh_sess.execute_command("rm -rf /opt/couchbase /data/* /tmp/*")
         ssh_sess.disconnect()
         return True
