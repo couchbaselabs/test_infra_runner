@@ -50,7 +50,11 @@ def cleanup_node(node_info):
     server.ssh_password = "couchbase"
 
     try:
-        ssh_sess = RemoteMachineShellConnection(server)
+        ssh_sess = RemoteMachineShellConnection(server, exit_on_failure=False,
+                                                max_attempts_connect=1)
+    except Exception:
+        return "connection_issue"
+    try:
         ssh_sess.execute_command("pkill -9 memcached")
         ssh_sess.execute_command("iptables -F ; ip6tables -F ; iptables -t nat -F ; iptables -t mangle -F ; iptables -X")
         ssh_sess.execute_command("ip6tables -t nat -F ; ip6tables -t mangle -F ; ip6tables -X ")
@@ -60,10 +64,10 @@ def cleanup_node(node_info):
         ssh_sess.execute_command("apt-get clean ; rm -rf /var/lib/apt/lists/* ")
         ssh_sess.execute_command("rm -rf /opt/couchbase /data/* /tmp/*")
         ssh_sess.disconnect()
-        return True
+        return "ok"
     except Exception as e:
         logger.error(f"Error: {e}")
-    return False
+    return "failure"
 
 
 def main():
@@ -82,19 +86,23 @@ def main():
     # collection = bucket.default_collection()
     result = sdk_conn.query(
         f"SELECT * FROM `{bucket_name}` WHERE state='failedInstall'")
+
+    ssh_failed_nodes = list()
+    unknown_failure_nodes = list()
+
     for row in result.rows():
         row = row["QE-server-pool"]
-        cleanup_okay = False
+        cleanup_status = "fail"
         if isinstance(row["poolId"], list):
             for t_pool_id in row["poolId"]:
                 if t_pool_id in pool_ids_to_monitor:
-                    cleanup_okay = cleanup_node(row)
+                    cleanup_status = cleanup_node(row)
                     break
         else:
             if row["poolId"] in pool_ids_to_monitor:
-                cleanup_okay = cleanup_node(row)
+                cleanup_status = cleanup_node(row)
 
-        if cleanup_okay:
+        if cleanup_status == "ok":
             # Mark the node as available
             logger.info(f"Marking node {row['ipaddr']} as available")
             update_query = (f"update `{bucket_name}` set state='available' "
@@ -108,9 +116,25 @@ def main():
                 logger.info(f"Success: {row['ipaddr']} state to available")
             except Exception as e:
                 logger.error(f"Fail: {row['ipaddr']}, Exception: {e}")
+        elif cleanup_status == "connection_issue":
+            ssh_failed_nodes.append(row['ipaddr'])
+        else:
+            unknown_failure_nodes.append(row['ipaddr'])
 
     sdk_conn.close()
 
+    return ssh_failed_nodes, unknown_failure_nodes
+
 
 if __name__ == "__main__":
-    main()
+    unreachable, unknown_failures = main()
+    if unreachable:
+        op = "---------- Unreachable nodes -----------"
+        for ip in unreachable:
+            op += f"\n {ip}"
+        logger.critical(f"\n {op}")
+    if unknown_failures:
+        op = "---------- Cleanup failed nodes -----------"
+        for ip in unreachable:
+            op += f"\n {ip}"
+        logger.critical(f"\n {op}")

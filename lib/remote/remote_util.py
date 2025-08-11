@@ -232,7 +232,8 @@ class RemoteMachineShellConnection(KeepRefs):
             exit(1)
 
     @not_for_capella
-    def __init__(self, serverInfo, exit_on_failure=True):
+    def __init__(self, serverInfo,
+                 max_attempts_connect=5, exit_on_failure=True):
         # This makes it easy to find places where SSH is being used because a stack trace can be printed
         if CbServer.capella_run:
             raise Exception("no SSH allowed in Capella")
@@ -260,7 +261,8 @@ class RemoteMachineShellConnection(KeepRefs):
         self._ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
         self.ssh_connect_with_retries(serverInfo.ip, serverInfo.ssh_username, serverInfo.ssh_password,
-                                      serverInfo.ssh_key, exit_on_failure)
+                                      serverInfo.ssh_key, exit_on_failure,
+                                      max_attempts_connect=max_attempts_connect)
 
         """ self.info.distribution_type.lower() == "ubuntu" """
         self.cmd_ext = ""
