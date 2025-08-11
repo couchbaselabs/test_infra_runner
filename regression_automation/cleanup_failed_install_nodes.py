@@ -77,7 +77,7 @@ def main():
     # bucket = sdk_conn.bucket(bucket_name)
     # collection = bucket.default_collection()
     result = sdk_conn.query(
-        f"SELECT * FROM `{bucket_name}` WHERE state='failed_install'")
+        f"SELECT * FROM `{bucket_name}` WHERE state='failedInstall'")
     for row in result.rows():
         row = row["QE-server-pool"]
         cleanup_okay = False
@@ -95,7 +95,7 @@ def main():
             print(f"Marking node {row['ipaddr']} as available")
             update_query = (f"UPDATE `{bucket_name}` SET state='available' "
                             f"WHERE ipaddr='{row['ipaddr']}' "
-                            f"AND state='failed_install'")
+                            f"AND state='failedInstall'")
             print(update_query)
             try:
                 result = sdk_conn.query(update_query)
