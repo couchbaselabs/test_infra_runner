@@ -233,7 +233,7 @@ class RemoteMachineShellConnection(KeepRefs):
 
     @not_for_capella
     def __init__(self, serverInfo,
-                 max_attempts_connect=5, exit_on_failure=True):
+                 max_attempts_connect=5, exit_on_failure=True, ssh_timeout=None):
         # This makes it easy to find places where SSH is being used because a stack trace can be printed
         if CbServer.capella_run:
             raise Exception("no SSH allowed in Capella")
@@ -262,7 +262,8 @@ class RemoteMachineShellConnection(KeepRefs):
 
         self.ssh_connect_with_retries(serverInfo.ip, serverInfo.ssh_username, serverInfo.ssh_password,
                                       serverInfo.ssh_key, exit_on_failure,
-                                      max_attempts_connect=max_attempts_connect)
+                                      max_attempts_connect=max_attempts_connect,
+                                      ssh_timeout=ssh_timeout)
 
         """ self.info.distribution_type.lower() == "ubuntu" """
         self.cmd_ext = ""
@@ -283,16 +284,17 @@ class RemoteMachineShellConnection(KeepRefs):
         In case of non root user, we need to switch to root to
         run command
     """
-    def connect_with_user(self, user="root"):
+    def connect_with_user(self, user="root", ssh_timeout=None):
         if self.info.distribution_type.lower() == "mac":
             log.info("This is Mac Server.  Skip re-connect to it as %s" % user)
             return
-        self.ssh_connect_with_retries(self.ip, user, self.password, self.ssh_key)
+        self.ssh_connect_with_retries(self.ip, user, self.password, self.ssh_key,
+                                      ssh_timeout=ssh_timeout)
 
 
     def ssh_connect_with_retries(self, ip, ssh_username, ssh_password, ssh_key,
                                  exit_on_failure = False, max_attempts_connect = 5,
-                                 backoff_time = 10):
+                                 backoff_time = 10, ssh_timeout=None):
         # Retries with exponential backoff delay
         attempt = 0
         is_ssh_ok = False
@@ -305,11 +307,13 @@ class RemoteMachineShellConnection(KeepRefs):
                 if self.remote and ssh_key == '':
                     self._ssh_client.connect(
                         hostname=ip.replace('[', '').replace(']', ''),
-                        username=ssh_username, password=ssh_password, look_for_keys=False)
+                        username=ssh_username, password=ssh_password,
+                        look_for_keys=False, timeout=ssh_timeout)
                 elif self.remote:
                     self._ssh_client.connect(
                         hostname=ip.replace('[', '').replace(']', ''),
-                        username=ssh_username, key_filename=ssh_key, look_for_keys=False)
+                        username=ssh_username, key_filename=ssh_key,
+                        look_for_keys=False, timeout=ssh_timeout)
                 is_ssh_ok = True
             except paramiko.BadHostKeyException as bhke:
                 log.error(
