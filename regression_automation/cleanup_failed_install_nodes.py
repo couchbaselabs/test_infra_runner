@@ -190,9 +190,19 @@ def main():
                     logger.error(f"Fail: {row['ipaddr']}, Exception: {e}")
                     unknown_failure_nodes.append(row['ipaddr'])
             elif cleanup_status == "connection_issue":
-                ssh_failed_nodes.append(row['ipaddr'])
+                update_result = sdk_conn.query(
+                    f"UPDATE `{bucket_name}` SET state='sshFailed'"
+                    f" WHERE ipaddr='{row['ipaddr']}'"
+                    f" AND state='failedInstall'")
+                for update_row in update_result.rows():
+                    pass
             else:
                 unknown_failure_nodes.append(row['ipaddr'])
+
+        result = sdk_conn.query(
+            f"SELECT * FROM `{bucket_name}` WHERE state='sshFailed'")
+        for row in result.rows():
+            ssh_failed_nodes.append(row[bucket_name]['ipaddr'])
 
         return cleaned_up_nodes, ssh_failed_nodes, unknown_failure_nodes
 
