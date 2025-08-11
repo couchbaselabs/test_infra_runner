@@ -1,4 +1,5 @@
 import os
+import logging
 import sys
 from time import sleep
 
@@ -15,6 +16,9 @@ sys.path = [parent_dir, lib_dir] + sys.path
 
 from TestInput import TestInputServer, TestInputSingleton, TestInput
 from remote.remote_util import RemoteMachineShellConnection
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger()
 
 
 # Initialize TestInputSingleton to avoid errors in RemoteMachineShellConnection
@@ -38,8 +42,8 @@ setup_test_input()
 
 
 def cleanup_node(node_info):
-    print(f"Cleaning up node: {node_info['ipaddr']}"
-          f" in poolId={node_info['poolId']}")
+    logger.info(f"Cleaning up node: {node_info['ipaddr']}"
+                f" in poolId={node_info['poolId']}")
     server = TestInputServer()
     server.ip = node_info['ipaddr']
     server.ssh_username = "root"
@@ -58,7 +62,7 @@ def cleanup_node(node_info):
         ssh_sess.disconnect()
         return True
     except Exception as e:
-        print(f"Error: {e}")
+        logger.error(f"Error: {e}")
     return False
 
 
@@ -92,20 +96,20 @@ def main():
 
         if cleanup_okay:
             # Mark the node as available
-            print(f"Marking node {row['ipaddr']} as available")
-            update_query = (f"UPDATE `{bucket_name}` SET state='available' "
-                            f"WHERE ipaddr='{row['ipaddr']}' "
-                            f"AND state='failedInstall'")
-            print(update_query)
+            logger.info(f"Marking node {row['ipaddr']} as available")
+            update_query = (f"update `{bucket_name}` set state='available' "
+                            f"where ipaddr='{row['ipaddr']}' "
+                            f"and state='failedInstall'")
+            logger.info(update_query)
             try:
-                result = sdk_conn.query(update_query)
-                for row in result.rows():
-                    print(row)
-                print(f"Success: {row['ipaddr']} state to available")
+                update_result = sdk_conn.query(update_query)
+                for update_row in update_result.rows():
+                    logger.info(update_row)
+                logger.info(f"Success: {row['ipaddr']} state to available")
             except Exception as e:
-                print(f"Fail: {row['ipaddr']}, Exception: {e}")
+                logger.error(f"Fail: {row['ipaddr']}, Exception: {e}")
 
-        sdk_conn.close()
+    sdk_conn.close()
 
 
 if __name__ == "__main__":
