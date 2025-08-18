@@ -129,7 +129,9 @@ ENTRYPOINT ["sh", "dispatcher.sh"]
   exe_str="docker run -m 256m --security-opt seccomp=unconfined --name $container_name $docker_img --build_url $BUILD_URL --job_url $JOB_URL --log_level debug"
 else
   echo "Cloning testrunner repo"
-  git clone https://github.com/couchbase/testrunner.git .
+  rm -rf testrunner
+  git clone https://github.com/couchbase/testrunner.git
+  cd testrunner
   git submodule init
   git submodule update --init --force --remote
   # Assume all deps are pre-installed (centos case)
