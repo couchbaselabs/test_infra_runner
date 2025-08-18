@@ -18,6 +18,45 @@ curl -o ${PARENT_JOB_INFO_FILE} ${JENKINS_URL}${PARENT_JOB}${PARENT_BUILD}/api/j
 PARENT_COMP_SUBC="`egrep 'component' ${PARENT_JOB_INFO_FILE} -A1|egrep value |sed 's/value//g'| head -1 | xargs|sed -e 's/ : //g' -e 's/ /-/g'`"
 echo "PARENT_JOB_COMP=${PARENT_COMP_SUBC},PARENT_JOB_URL=${JENKINS_URL}${PARENT_JOB}${PARENT_BUILD}"
 
+if [ "${SERVER_MANAGER_TYPE}" = "dynamic" ]; then
+  echo "*** Dynamic Server Manager Cleanup ***"
+  DYNAMIC_SERVER_MANAGER_URL="http://172.23.121.132:5000"
+  PASSED_IPS="`egrep 'INSTALL COMPLETED' ${PARENT_LOG}|rev|cut -f1 -d' '|rev|xargs`"
+  FAILED_IPS="`egrep 'INSTALL FAILED' ${PARENT_LOG}|rev|cut -f1 -d' '|rev|xargs`"
+  echo "PASSED_IPS=$PASSED_IPS"
+  echo "FAILED_IPS=$FAILED_IPS"
+  PASSED_COUNT=`echo $PASSED_IPS|wc -w|xargs`
+  FAILED_COUNT=`echo $FAILED_IPS|wc -w|xargs`
+  if [ $PASSED_COUNT == 0 ] && [ $FAILED_COUNT == 0 ]; then
+    COUNT_IPS=`egrep servers $PARENT_JOB_INFO_FILE -A1|egrep value|cut -f2 -d':'|sed 's/,/ /g'|wc -w`
+  else
+    COUNT_IPS=`expr $PASSED_COUNT + $FAILED_COUNT`
+  fi
+  echo "IPS COUNT=${COUNT_IPS}"
+  TEST_RESULT=testresult.json
+  curl -s -o ${TEST_RESULT} ${JENKINS_URL}${PARENT_JOB}${PARENT_BUILD}/testReport/api/json?pretty=true
+  TEST_FAIL_COUNT=`egrep failCount ${TEST_RESULT} |cut -f2 -d:|xargs|sed 's/,//g'`
+  if [ "${CLEANUP_VMS}" = "always" ]; then
+    curl -s "${DYNAMIC_SERVER_MANAGER_URL}/releaseservers/${descriptor}?count=${COUNT_IPS}"
+  elif [ "${TEST_FAIL_COUNT}" = "0" ]; then
+   	curl -s "${DYNAMIC_SERVER_MANAGER_URL}/releaseservers/${descriptor}?count=${COUNT_IPS}"
+  else
+    echo "WARNING: ${TEST_FAIL_COUNT} tests failed. Keeping VMs for analysis!"
+  fi
+   
+  # Update for add pool servers
+  QE_SERVER_MANAGER_URL="http://172.23.104.162:8081"
+  echo "addPoolServers=$addPoolServers"
+  if [ ! "$addPoolServers" = ""  -a ! "$addPoolServers" = "None" ]; then
+    for IP in `echo ${addPoolServers}|sed -e 's/"//g' -e 's/,/ /g'`
+    do
+      echo curl -g ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/available
+      curl -g ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/available
+    done  
+  fi
+  exit 0
+fi
+
 
 UNINSTALL_OUT=$WORKSPACE/uninstall_out.txt
 if [ -f ${UNINSTALL_OUT} ]; then
