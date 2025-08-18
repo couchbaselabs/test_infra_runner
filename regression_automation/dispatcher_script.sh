@@ -80,7 +80,7 @@ if [ ! "${executor_job_parameters}" = "" ]; then
   EXEC_JOB_PARAMS=" --job_params ${executor_job_parameters}"
 fi
 
-#rerun_condition="--rerun_condition ${rerun_condition}"
+rerun_condition="--rerun_condition ${rerun_condition}"
 
 JENKINS_URL=http://172.23.120.81
 
@@ -128,41 +128,26 @@ ENTRYPOINT ["sh", "dispatcher.sh"]
   # SDK4: String for sdk4 based dispatcher to use transactions to book servers locally (--log_level options is new in this)
   exe_str="docker run -m 256m --security-opt seccomp=unconfined --name $container_name $docker_img --build_url $BUILD_URL --job_url $JOB_URL --log_level debug"
 else
-  py_executable=/usr/local/bin/python3.7
-  
   echo "Cloning testrunner repo"
   git clone https://github.com/couchbase/testrunner.git .
   git submodule init
   git submodule update --init --force --remote
-
-  # Install Virtual env
-  ${py_executable} -m pip install virtualenv
-
-  # Create the virutal env folder with name 'venv'
-  virtualenv -p ${py_executable} venv
-
-  # Reset py_executable path to venv folder
-  py_executable=./venv/bin/python
-
-  # Install pip requirementes
-  cat requirements.txt | grep -v couchbase | xargs | xargs ${py_executable} -m pip install
-  ${py_executable} -m pip install couchbase==2.5.12 dnspython==2.2.1 google.cloud.dns
-
-  exe_str="${py_executable} -u scripts/testDispatcher.py"
+  # Assume all deps are pre-installed (centos case)
+  exe_str="python3 -u scripts/testDispatcher.py"
 fi
 
 if [ -n "$url" ]; then
 	if [ -n "$extraParameters" ]; then
-        $exe_str -r ${suite} -v ${version_number} -o ${OS} -c ${component} -p ${serverPoolId} -a ${addPoolId} -s ${subcomponent}  ${testoption} -u ${url} -b ${branch} ${SERVER_MGR_OPTIONS} -g "${cherrypick}" -e ${extraParameters} -i ${retries} ${freshrun} ${rerun_param} ${EXEC_JOB_PARAMS} ${checkvm} ${serverType} -f ${JENKINS_URL} ${columnar_version_arg}
+        $exe_str -r ${suite} -v ${version_number} -o ${OS} -c ${component} -p ${serverPoolId} -a ${addPoolId} -s ${subcomponent}  ${testoption} -u ${url} -b ${branch} ${SERVER_MGR_OPTIONS} ${rerun_condition} -g "${cherrypick}" -e ${extraParameters} -i ${retries} ${freshrun} ${rerun_param} ${EXEC_JOB_PARAMS} ${checkvm} ${serverType} -f ${JENKINS_URL} ${columnar_version_arg}
 	else
-    	$exe_str -r ${suite} -v ${version_number} -o ${OS} -c ${component} -p ${serverPoolId} -a ${addPoolId} -s ${subcomponent}  ${testoption} -u ${url} -b ${branch} ${SERVER_MGR_OPTIONS} -g "${cherrypick}" -i ${retries} ${freshrun} ${rerun_param} ${EXEC_JOB_PARAMS} ${checkvm} ${serverType} -f ${JENKINS_URL} ${columnar_version_arg}
+    	$exe_str -r ${suite} -v ${version_number} -o ${OS} -c ${component} -p ${serverPoolId} -a ${addPoolId} -s ${subcomponent}  ${testoption} -u ${url} -b ${branch} ${SERVER_MGR_OPTIONS} ${rerun_condition} -g "${cherrypick}" -i ${retries} ${freshrun} ${rerun_param} ${EXEC_JOB_PARAMS} ${checkvm} ${serverType} -f ${JENKINS_URL} ${columnar_version_arg}
     fi
 else
 	if [ -n "$extraParameters" ]; then
-    	$exe_str -r ${suite} -v  ${version_number} -o ${OS} -c ${component} -p ${serverPoolId} -a ${addPoolId} -s ${subcomponent}  ${testoption} -b ${branch} ${SERVER_MGR_OPTIONS} -g "${cherrypick}" -e ${extraParameters} -i ${retries} ${freshrun} ${rerun_param} ${EXEC_JOB_PARAMS} ${checkvm} ${serverType} -f ${JENKINS_URL} ${columnar_version_arg}
+    	$exe_str -r ${suite} -v  ${version_number} -o ${OS} -c ${component} -p ${serverPoolId} -a ${addPoolId} -s ${subcomponent}  ${testoption} -b ${branch} ${SERVER_MGR_OPTIONS} ${rerun_condition} -g "${cherrypick}" -e ${extraParameters} -i ${retries} ${freshrun} ${rerun_param} ${EXEC_JOB_PARAMS} ${checkvm} ${serverType} -f ${JENKINS_URL} ${columnar_version_arg}
     else
-    	$exe_str -r ${suite} -v  ${version_number} -o ${OS} -c ${component} -p ${serverPoolId} -a ${addPoolId} -s ${subcomponent}  ${testoption} -b ${branch} ${SERVER_MGR_OPTIONS} -g "${cherrypick}" -i ${retries} ${freshrun} ${rerun_param} ${EXEC_JOB_PARAMS} ${checkvm} ${serverType} -f ${JENKINS_URL} ${columnar_version_arg}
-    fi    
+    	$exe_str -r ${suite} -v  ${version_number} -o ${OS} -c ${component} -p ${serverPoolId} -a ${addPoolId} -s ${subcomponent}  ${testoption} -b ${branch} ${SERVER_MGR_OPTIONS} ${rerun_condition} -g "${cherrypick}" -i ${retries} ${freshrun} ${rerun_param} ${EXEC_JOB_PARAMS} ${checkvm} ${serverType} -f ${JENKINS_URL} ${columnar_version_arg}
+    fi
 fi
 
 if [ "$use_dockerized_dispatcher" == "true" ] || [ "$use_dockerized_dispatcher_sdk4" == "true" ]; then
