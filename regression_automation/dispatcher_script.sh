@@ -1,0 +1,173 @@
+#!/bin/bash -xe
+
+# If deb12 slave, set the right python3 version to use
+if echo $NODE_LABELS | grep -q deb12_dispatcher ; then
+  export PYENV_ROOT="$HOME/.pyenv"
+  export PATH="$PYENV_ROOT/bin:$PATH"
+  eval "$(pyenv init -)"
+  pyenv local 3.10.14
+  alias python3=python
+  echo "deb12 dispatcher detected. Forcing docker_run=true"
+  export use_dockerized_dispatcher=true
+fi
+
+set +e
+echo suite $suite
+if [ ${Test} = true ]; then
+   testoption=-t
+else
+   testoption=
+fi
+if [ ${fresh_run} == true ]; then
+	freshrun=
+else
+	freshrun=-q
+fi
+
+if [ ${use_dynamic_vms} == true ]; then
+  # Force avoid using docker if dynamic vm dispatcher is selected
+  use_dockerized_dispatcher=false
+
+  # using CHECK_SSH as false since that was default in dispatcher_dynvm job as well
+  CHECK_SSH=False
+  SERVER_MGR_OPTIONS="-x 172.23.121.132:5000 -z 2000 -w $CHECK_SSH"
+fi
+
+case "$serverType" in
+  "CAPELLA_MOCK")
+    serverType=" -y CAPELLA_LOCAL"
+    if [ -n "$extraParameters" ]; then
+	    extraParameters+=',capella_run=True'
+    else
+    	extraParameters='capella_run=True'
+    fi
+    ;;
+
+  "ELIXIR_ONPREM")
+    serverType=" -y ELIXIR_ONPREM"
+    ;;
+
+  "ON_PREM_PROVISIONED")
+    serverType=" -y ON_PREM_PROVISIONED"
+	;;
+
+  *)
+    serverType=" -y VM"
+    ;;
+esac
+
+
+if [ -z "${rerun_params}" ]; then
+	rerun_param=
+else
+	rerun_param="-m '${rerun_params}'"
+fi
+
+if [ ${check_vm} == true ]; then
+    #TBD: Some isuse with check ssh and commenting until fixed (CBQE-6914)
+	#checkvm="--check_vm True"
+    checkvm=""
+else
+	checkvm=""
+fi
+
+columnar_version_arg=""
+if [ "$columnar_version_number" != "None" ]; then
+  columnar_version_arg="--columnar_version $columnar_version_number"
+fi
+
+if [ ! "${executor_job_parameters}" = "" ]; then
+  EXEC_JOB_PARAMS=" --job_params ${executor_job_parameters}"
+fi
+
+#rerun_condition="--rerun_condition ${rerun_condition}"
+
+JENKINS_URL=http://172.23.120.81
+
+if [ "$use_dockerized_dispatcher" == "true" ]; then
+  docker --help > /dev/null
+  if [ $? -ne  0 ]; then
+      echo "ERROR: Docker not found!!"
+      exit 1
+  fi
+  docker_img=dispatcher:sdk4
+  docker_img_id=$(docker images -q $docker_img)
+  if [ "$docker_img_id" == "" ]; then
+    echo '
+FROM python:3.13.0
+
+# Get latest testrunner::master
+RUN git clone --branch master https://github.com/couchbase/testrunner.git
+WORKDIR /testrunner
+RUN git submodule init
+RUN git submodule update --init --force --remote
+RUN python -m pip install paramiko boto3 httplib2 setuptools google-cloud-compute google.cloud.dns dnspython couchbase==4.4.0
+
+# Configure dummy user/email for cherry-picks to work
+RUN git config user.name qe_dispatcher
+RUN git config user.email qe@couchbase.com
+RUN git config pull.rebase true
+
+WORKDIR /
+# Create a mini-scipt to refresh master on each run
+RUN echo "cd /testrunner" > dispatcher.sh
+RUN echo "git pull -q" >> dispatcher.sh
+RUN echo "python -u scripts/testDispatcher_sdk4.py \"\$@\"" >> dispatcher.sh
+
+# Set entrypoint for the docker container
+ENTRYPOINT ["sh", "dispatcher.sh"]
+    ' > Dockerfile
+    docker build . --tag $docker_img
+  fi
+  container_name=dispatcher_${BUILD_ID}
+  #exe_str="docker run --name $container_name $docker_img --build_url $BUILD_URL --job_url $JOB_URL ${rerun_condition}"
+
+  # SDK3: Use this line while switching back to sdk3 dispacher (if sdk4 issues are seen)
+  # exe_str="docker run --name $container_name $docker_img --build_url $BUILD_URL --job_url $JOB_URL"
+
+  # SDK4: String for sdk4 based dispatcher to use transactions to book servers locally (--log_level options is new in this)
+  exe_str="docker run -m 256m --security-opt seccomp=unconfined --name $container_name $docker_img --build_url $BUILD_URL --job_url $JOB_URL --log_level debug"
+else
+  py_executable=/usr/local/bin/python3.7
+  
+  echo "Cloning testrunner repo"
+  git clone https://github.com/couchbase/testrunner.git .
+  git submodule init
+  git submodule update --init --force --remote
+
+  # Install Virtual env
+  ${py_executable} -m pip install virtualenv
+
+  # Create the virutal env folder with name 'venv'
+  virtualenv -p ${py_executable} venv
+
+  # Reset py_executable path to venv folder
+  py_executable=./venv/bin/python
+
+  # Install pip requirementes
+  cat requirements.txt | grep -v couchbase | xargs | xargs ${py_executable} -m pip install
+  ${py_executable} -m pip install couchbase==2.5.12 dnspython==2.2.1 google.cloud.dns
+
+  exe_str="${py_executable} -u scripts/testDispatcher.py"
+fi
+
+if [ -n "$url" ]; then
+	if [ -n "$extraParameters" ]; then
+        $exe_str -r ${suite} -v ${version_number} -o ${OS} -c ${component} -p ${serverPoolId} -a ${addPoolId} -s ${subcomponent}  ${testoption} -u ${url} -b ${branch} ${SERVER_MGR_OPTIONS} -g "${cherrypick}" -e ${extraParameters} -i ${retries} ${freshrun} ${rerun_param} ${EXEC_JOB_PARAMS} ${checkvm} ${serverType} -f ${JENKINS_URL} ${columnar_version_arg}
+	else
+    	$exe_str -r ${suite} -v ${version_number} -o ${OS} -c ${component} -p ${serverPoolId} -a ${addPoolId} -s ${subcomponent}  ${testoption} -u ${url} -b ${branch} ${SERVER_MGR_OPTIONS} -g "${cherrypick}" -i ${retries} ${freshrun} ${rerun_param} ${EXEC_JOB_PARAMS} ${checkvm} ${serverType} -f ${JENKINS_URL} ${columnar_version_arg}
+    fi
+else
+	if [ -n "$extraParameters" ]; then
+    	$exe_str -r ${suite} -v  ${version_number} -o ${OS} -c ${component} -p ${serverPoolId} -a ${addPoolId} -s ${subcomponent}  ${testoption} -b ${branch} ${SERVER_MGR_OPTIONS} -g "${cherrypick}" -e ${extraParameters} -i ${retries} ${freshrun} ${rerun_param} ${EXEC_JOB_PARAMS} ${checkvm} ${serverType} -f ${JENKINS_URL} ${columnar_version_arg}
+    else
+    	$exe_str -r ${suite} -v  ${version_number} -o ${OS} -c ${component} -p ${serverPoolId} -a ${addPoolId} -s ${subcomponent}  ${testoption} -b ${branch} ${SERVER_MGR_OPTIONS} -g "${cherrypick}" -i ${retries} ${freshrun} ${rerun_param} ${EXEC_JOB_PARAMS} ${checkvm} ${serverType} -f ${JENKINS_URL} ${columnar_version_arg}
+    fi    
+fi
+
+if [ "$use_dockerized_dispatcher" == "true" ] || [ "$use_dockerized_dispatcher_sdk4" == "true" ]; then
+  docker rm $container_name
+else
+  # Cleanup the virtual env folder
+  rm -rf venv
+fi
