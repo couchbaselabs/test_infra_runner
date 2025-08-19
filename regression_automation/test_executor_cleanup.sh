@@ -18,7 +18,7 @@ curl -o ${PARENT_JOB_INFO_FILE} ${JENKINS_URL}${PARENT_JOB}${PARENT_BUILD}/api/j
 PARENT_COMP_SUBC="`egrep 'component' ${PARENT_JOB_INFO_FILE} -A1|egrep value |sed 's/value//g'| head -1 | xargs|sed -e 's/ : //g' -e 's/ /-/g'`"
 echo "PARENT_JOB_COMP=${PARENT_COMP_SUBC},PARENT_JOB_URL=${JENKINS_URL}${PARENT_JOB}${PARENT_BUILD}"
 
-if [ "${SERVER_MANAGER_TYPE}" = "dynamic" ]; then
+if [ "${is_dynamic_vms}" == "true" ]; then
   echo "*** Dynamic Server Manager Cleanup ***"
   DYNAMIC_SERVER_MANAGER_URL="http://172.23.121.132:5000"
   PASSED_IPS="`egrep 'INSTALL COMPLETED' ${PARENT_LOG}|rev|cut -f1 -d' '|rev|xargs`"
@@ -56,7 +56,6 @@ if [ "${SERVER_MANAGER_TYPE}" = "dynamic" ]; then
   fi
   exit 0
 fi
-
 
 UNINSTALL_OUT=$WORKSPACE/uninstall_out.txt
 if [ -f ${UNINSTALL_OUT} ]; then
