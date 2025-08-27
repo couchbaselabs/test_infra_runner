@@ -90,43 +90,20 @@ if [ "$use_dockerized_dispatcher" == "true" ]; then
       echo "ERROR: Docker not found!!"
       exit 1
   fi
-  docker_img=dispatcher:sdk4
+  docker_img=dispatcher:sdk3
   docker_img_id=$(docker images -q $docker_img)
   if [ "$docker_img_id" == "" ]; then
-    echo '
-FROM python:3.13.0
-
-# Get latest testrunner::master
-RUN git clone --branch master https://github.com/couchbase/testrunner.git
-WORKDIR /testrunner
-RUN git submodule init
-RUN git submodule update --init --force --remote
-RUN python -m pip install paramiko boto3 httplib2 setuptools google-cloud-compute google.cloud.dns dnspython couchbase==4.4.0
-
-# Configure dummy user/email for cherry-picks to work
-RUN git config user.name qe_dispatcher
-RUN git config user.email qe@couchbase.com
-RUN git config pull.rebase true
-
-WORKDIR /
-# Create a mini-scipt to refresh master on each run
-RUN echo "cd /testrunner" > dispatcher.sh
-RUN echo "git pull -q" >> dispatcher.sh
-RUN echo "python -u scripts/testDispatcher_sdk4.py \"\$@\"" >> dispatcher.sh
-
-# Set entrypoint for the docker container
-ENTRYPOINT ["sh", "dispatcher.sh"]
-    ' > Dockerfile
+    wget https://raw.githubusercontent.com/couchbaselabs/test_infra_runner/refs/heads/master/regression_automation/Dockerfile_dispatcher_sdk3 -O Dockerfile
     docker build . --tag $docker_img
   fi
   container_name=dispatcher_${BUILD_ID}
   #exe_str="docker run --name $container_name $docker_img --build_url $BUILD_URL --job_url $JOB_URL ${rerun_condition}"
 
   # SDK3: Use this line while switching back to sdk3 dispacher (if sdk4 issues are seen)
-  # exe_str="docker run --name $container_name $docker_img --build_url $BUILD_URL --job_url $JOB_URL"
+  exe_str="docker run --name $container_name $docker_img --build_url $BUILD_URL --job_url $JOB_URL"
 
   # SDK4: String for sdk4 based dispatcher to use transactions to book servers locally (--log_level options is new in this)
-  exe_str="docker run -m 256m --security-opt seccomp=unconfined --name $container_name $docker_img --build_url $BUILD_URL --job_url $JOB_URL --log_level debug"
+  # exe_str="docker run -m 256m --security-opt seccomp=unconfined --name $container_name $docker_img --build_url $BUILD_URL --job_url $JOB_URL --log_level info"
 else
   echo "Cloning testrunner repo"
   rm -rf testrunner
