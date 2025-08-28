@@ -81,8 +81,8 @@ if [ ! "${executor_job_parameters}" = "" ]; then
 fi
 
 rerun_condition="--rerun_condition ${rerun_condition}"
-
-JENKINS_URL=http://172.23.120.81
+JENKINS_URL=${JENKINS_URL:-http://172.23.120.81}
+echo "JENKINS_URL: $JENKINS_URL"
 
 if [ "$use_dockerized_dispatcher" == "true" ]; then
   docker --help > /dev/null
