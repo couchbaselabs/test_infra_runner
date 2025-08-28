@@ -21,6 +21,50 @@ from remote.remote_util import RemoteMachineShellConnection
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 
+cleanup_commands = [
+    # Kill memcached processes
+    "pkill -9 memcached",
+
+    # IPv4 iptables cleanup
+    "iptables -F ; iptables -t nat -F ; iptables -t mangle -F ; iptables -X",
+    # IPv6 ip6tables cleanup
+    "ip6tables -t nat -F ; ip6tables -t mangle -F ; ip6tables -X",
+
+    # Abort any ongoing dpkg operations
+    "dpkg --configure -a",
+
+    # Force-remove broken package if partially installed
+    "dpkg --remove --force-remove-reinstreq couchbase-server",
+    "dpkg --purge couchbase-server",
+
+    # Clean up dpkg state files (only if really stuck — be cautious)
+    "rm -f /var/lib/dpkg/lock* /var/cache/apt/archives/lock /var/lib/apt/lists/lock",
+
+    # Remove possibly broken updates or lock files
+    "rm -f /var/lib/dpkg/updates/*",
+
+    # Reconfigure dpkg database in case it's inconsistent
+    # Clears the available packages list
+    "dpkg --clear-avail",
+    # Clean the local repo of retrieved package files
+    "apt-get clean",
+
+    # Clean and rebuild package list
+    "rm -rf /var/lib/apt/lists/*",
+    "rm -rf /var/lib/apt/lists/partial/*",
+    "apt-get update",
+
+    # Cleanup unused packages
+    "apt-get autoremove -y",
+    "apt-get autoclean",
+
+    # Clean up Journal logs
+    "journalctl --rotate ; journalctl --vacuum-time=1s",
+
+    # Remove couchbase data and temp files
+    "rm -rf /opt/couchbase /data/* /tmp/*",
+]
+
 
 # Initialize TestInputSingleton to avoid errors in RemoteMachineShellConnection
 def setup_test_input():
@@ -77,6 +121,8 @@ def ssh_connection(server):
 
 
 def cleanup_node(node_info):
+    global cleanup_commands
+
     logger.info(f"Cleaning up node: {node_info['ipaddr']}"
                 f" in poolId={node_info['poolId']}")
 
@@ -87,32 +133,20 @@ def cleanup_node(node_info):
 
     try:
         with ssh_connection(server) as ssh_sess:
-            # Kill memcached processes
-            ssh_sess.execute_command("pkill -9 memcached")
-
-            # Clear iptables rules
-            ssh_sess.execute_command(
-                "iptables -F ; ip6tables -F ; iptables -t nat -F ; "
-                "iptables -t mangle -F ; iptables -X")
-            ssh_sess.execute_command(
-                "ip6tables -t nat -F ; ip6tables -t mangle -F ; ip6tables -X")
-
-            sleep(2)
+            # Execute cleanup commands in sequence
+            for cmd in cleanup_commands:
+                try:
+                    ssh_sess.execute_command(cmd)
+                    sleep(1)
+                except Exception as e:
+                    # Log and continue with next command even if one fails
+                    logger.warning(f"Command '{cmd}' failed: {e}")
 
             # Stop couchbase server
             ssh_sess.execute_command(
                 "service couchbase-server stop ; "
                 "apt remove -y couchbase-server ; "
                 "dpkg --purge couchbase-server")
-
-            # Clean up logs
-            ssh_sess.execute_command("journalctl --rotate ; journalctl --vacuum-time=1s")
-
-            # Clean up package cache
-            ssh_sess.execute_command("apt-get clean ; rm -rf /var/lib/apt/lists/*")
-
-            # Remove couchbase data and temp files
-            ssh_sess.execute_command("rm -rf /opt/couchbase /data/* /tmp/*")
 
         return "ok"
 
