@@ -227,9 +227,9 @@ update_server_pool()
 
 all()
 {
-  if [ ! "${version_number}" = "" ]; then
-    cb_cluster_cleanup
-  fi
+  # if [ ! "${version_number}" = "" ]; then
+  #   cb_cluster_cleanup
+  # fi
   update_server_pool
 }
 
