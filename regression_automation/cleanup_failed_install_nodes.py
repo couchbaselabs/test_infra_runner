@@ -38,10 +38,10 @@ cleanup_commands = [
     "dpkg --purge couchbase-server",
 
     # Clean up dpkg state files (only if really stuck — be cautious)
-    "rm -f /var/lib/dpkg/lock* /var/cache/apt/archives/lock /var/lib/apt/lists/lock",
+    # "rm -f /var/lib/dpkg/lock* /var/cache/apt/archives/lock /var/lib/apt/lists/lock",
 
     # Remove possibly broken updates or lock files
-    "rm -f /var/lib/dpkg/updates/*",
+    # "rm -f /var/lib/dpkg/updates/*",
 
     # Reconfigure dpkg database in case it's inconsistent
     # Clears the available packages list
