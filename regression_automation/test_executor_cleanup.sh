@@ -109,8 +109,7 @@ cb_cluster_cleanup()
 get_url()
 {
   URL=$1
-  # CURL="curl -gs --retry 999 --retry-max-time 0"
-  CURL="curl -gs"
+  CURL="curl -gs --retry 999 --retry-max-time 2"
   echo $CURL $URL
   $CURL $URL >/tmp/$$.txt 2>&1 || true
   cat /tmp/$$.txt
@@ -133,9 +132,7 @@ update_server_pool()
 {
   echo "*** Server Pool release ***"
   QE_SERVER_MANAGER_URL="http://172.23.104.162:8081"
-  #CURL="curl -g --retry-connrefused --retry 999 --retry-max-time 0"
-  #CURL="curl -gs --retry 999 --retry-max-time 0"
-  CURL="curl -gs"
+  CURL="curl -gs --retry 999 --retry-max-time 2"
  
   if [ -f ${PARENT_LOG} ]; then
     #cat ${PARENT_LOG}
