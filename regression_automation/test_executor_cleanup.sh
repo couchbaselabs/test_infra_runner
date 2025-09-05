@@ -36,15 +36,12 @@ if [ "${is_dynamic_vms}" == "true" ]; then
   TEST_RESULT=testresult.json
   curl -s -o ${TEST_RESULT} ${JENKINS_URL}${PARENT_JOB}${PARENT_BUILD}/testReport/api/json?pretty=true
   TEST_FAIL_COUNT=`egrep failCount ${TEST_RESULT} |cut -f2 -d:|xargs|sed 's/,//g'`
-  if [ "${CLEANUP_VMS}" = "always" ]; then
-    curl -s "${DYNAMIC_SERVER_MANAGER_URL}/releaseservers/${descriptor}?count=${COUNT_IPS}"
-  elif [ "${TEST_FAIL_COUNT}" = "0" ]; then
-   	curl -s "${DYNAMIC_SERVER_MANAGER_URL}/releaseservers/${descriptor}?count=${COUNT_IPS}"
-  else
-    echo "WARNING: ${TEST_FAIL_COUNT} tests failed. Keeping VMs for analysis!"
-  fi
-   
-  # Update for add pool servers
+
+  # Releasing the VMs irrespective of the test results / state
+  curl -s "${DYNAMIC_SERVER_MANAGER_URL}/releaseservers/${descriptor}?count=${COUNT_IPS}"
+
+  # Update for add pool servers to release the
+  # additional servers booked from the regular pool
   QE_SERVER_MANAGER_URL="http://172.23.104.162:8081"
   echo "addPoolServers=$addPoolServers"
   if [ ! "$addPoolServers" = ""  -a ! "$addPoolServers" = "None" ]; then
@@ -52,7 +49,7 @@ if [ "${is_dynamic_vms}" == "true" ]; then
     do
       echo curl -g ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/available
       curl -g ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/available
-    done  
+    done
   fi
   exit 0
 fi
@@ -68,7 +65,7 @@ cb_cluster_cleanup()
   INI_FILE_NAME="`egrep -e 'install\.py' ${PARENT_LOG} |head -1 |grep -o '\install\.py .*' |cut -f3 -d' '|rev|cut -f1 -d'/'|rev`"
   if [ ! "${INI_FILE_NAME}" = "" ]; then
     curl -o ${INI_FILE_NAME} ${JENKINS_URL}${PARENT_JOB}${PARENT_BUILD}/artifact/${INI_FILE_NAME} || true
- 
+
     if [ -f ${INI_FILE_NAME} ]; then
       # See CBQE-5309
       IS_INI_HAS_IP="`egrep 'ip:' ${INI_FILE_NAME} || true`"
@@ -133,7 +130,7 @@ update_server_pool()
   echo "*** Server Pool release ***"
   QE_SERVER_MANAGER_URL="http://172.23.104.162:8081"
   CURL="curl -gs --retry 999 --retry-max-time 2"
- 
+
   if [ -f ${PARENT_LOG} ]; then
     #cat ${PARENT_LOG}
     PASSED_IPS="`egrep 'INSTALL COMPLETED' ${PARENT_LOG}|rev|cut -f1 -d' '|rev|xargs`"
@@ -144,7 +141,7 @@ update_server_pool()
     cat ${UNINSTALL_OUT} || true
     for IP in `echo $PASSED_IPS` ; do
       # See CBQE-5309
-      if [ -f ${UNINSTALL_OUT} ]; then 
+      if [ -f ${UNINSTALL_OUT} ]; then
         IS_CLEANUP_OK="`cat ${UNINSTALL_OUT} | egrep \"\bDone with cleanup on ${IP}\b\" || true`"
         if [ "${IS_CLEANUP_OK}" = "" ]; then
           #echo "Clean/uninstall on ${IP} didn't completed, marking as failedInstall. $CURL ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/failedInstall"
@@ -158,7 +155,7 @@ update_server_pool()
       else
         echo "No uninstall log is available. $CURL ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/available"
         get_url ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/available
-      fi  
+      fi
     done
     for IP in `echo $FAILED_IPS` ; do
       echo "$CURL ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/failedInstall"
@@ -211,14 +208,14 @@ update_server_pool()
       fi
     fi
  fi
- 
+
  #Update for add pool servers
  echo "addPoolServers=$addPoolServers"
  if [ ! "$addPoolServers" = ""  -a ! "$addPoolServers" = "None" ]; then
     for IP in `echo ${addPoolServers}|sed -e 's/"//g' -e 's/,/ /g'` ; do
 	    echo $CURL ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/available
       get_url ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/available
-    done  
+    done
  fi
 }
 
