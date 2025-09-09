@@ -25,6 +25,12 @@ else
 fi
 
 if [ ${use_dynamic_vms} == true ]; then
+  # Check if OS starts with "win" and exit if not
+  if [[ ! "$OS" =~ ^win ]]; then
+    echo "ERROR: OS='$OS'. Use Dynamic VM flag only to run on Windows OS."
+    exit 1
+  fi
+
   # Force avoid using docker if dynamic vm dispatcher is selected
   use_dockerized_dispatcher=false
 
