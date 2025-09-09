@@ -36,7 +36,7 @@ if [ ${use_dynamic_vms} == true ]; then
 
   # using CHECK_SSH as false since that was default in dispatcher_dynvm job as well
   CHECK_SSH=False
-  SERVER_MGR_OPTIONS="-x 172.23.121.132:5000 -z 2000 -w $CHECK_SSH"
+  SERVER_MGR_OPTIONS="-x 172.23.121.132:5000 -z 2000 -w $CHECK_SSH --is_dynamic_vms true"
 fi
 
 case "$serverType" in
