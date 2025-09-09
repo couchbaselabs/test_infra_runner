@@ -3,6 +3,7 @@ from couchbase.auth import PasswordAuthenticator
 from couchbase.cluster import Cluster
 from couchbase.options import ClusterOptions, QueryOptions, UpsertOptions
 import sys
+import os
 
 CB_HOST = os.getenv("CB_HOST")
 CB_BUCKET = "greenboard"
