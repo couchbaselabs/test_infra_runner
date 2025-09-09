@@ -10,23 +10,48 @@ CB_BUCKET = "greenboard"
 CB_USERNAME = os.getenv("CB_USERNAME")
 CB_PASSWORD = os.getenv("CB_PASSWORD")
 
+def mark_deleted_and_collect(entries, job_name, build_no, delete_all, changed):
+    for entry in entries:
+        if isinstance(entry, dict) and entry.get("displayName") == job_name:
+            if delete_all:
+                if not entry.get("deleted", False):
+                    entry["deleted"] = True
+                    changed.append(entry.get("build_id"))
+            elif build_no is not None and entry.get("build_id") == build_no:
+                if not entry.get("deleted", False):
+                    entry["deleted"] = True
+                    changed.append(entry.get("build_id"))
+                entry["olderBuild"] = True
+
+def find_best(entries, job_name):
+    candidates = [
+        e for e in entries
+        if isinstance(e, dict)
+        and e.get("displayName") == job_name
+        and not e.get("deleted", False)
+    ]
+    if not candidates:
+        return None
+    candidates.sort(key=lambda e: (e.get("failCount", float("inf")), -e.get("timestamp", 0)))
+    return candidates[0]
+
+
 def exec_update(obj, job_name, build_no=None, delete_all=False, changed=None):
     if isinstance(obj, dict):
         for k, v in obj.items():
             obj[k] = exec_update(v, job_name, build_no, delete_all, changed)
     elif isinstance(obj, list):
-        for entry in obj:
-            if isinstance(entry, dict):
-                if entry.get("displayName") == job_name:
-                    if delete_all:
-                        if not entry.get("deleted", False):
-                            entry["deleted"] = True
-                            changed.append(entry.get("build_id"))
-                    elif build_no is not None and entry.get("build_id") == build_no:
-                        if not entry.get("deleted", False):
-                            entry["deleted"] = True
-                            changed.append(entry.get("build_id"))
-            exec_update(entry, job_name, build_no, delete_all, changed)
+        mark_deleted_and_collect(obj, job_name, build_no, delete_all, changed)
+
+        if not delete_all and build_no is not None and len(obj) > 1:
+            best = find_best(obj, job_name)
+            if best:
+                for entry in obj:
+                    if isinstance(entry, dict) and entry.get("displayName") == job_name:
+                        if entry is best:
+                            entry["olderBuild"] = False
+                        else:
+                            entry["olderBuild"] = True
     return obj
 
 def delete_job(version, job_name, build_no=None, delete_all=False):
@@ -49,7 +74,6 @@ def delete_job(version, job_name, build_no=None, delete_all=False):
     collection.upsert(doc_id, doc, UpsertOptions(timeout=timedelta(seconds=120)))
     print(f"Updated {len(changed)} entries for job '{job_name}', build(s): {changed}")
     sys.exit(0)
-
 
 if __name__ == "__main__":
     version = sys.argv[1]
