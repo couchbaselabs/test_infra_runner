@@ -1,7 +1,6 @@
 # coding=utf-8
 import urllib
 
-import sys
 import argparse
 import json
 import time
@@ -9,10 +8,12 @@ import datetime
 import configparser
 import threading
 import logging
+import sys
+
 from couchbase.cluster import (ClusterOptions, Cluster)
 from couchbase.auth import PasswordAuthenticator
 import XenAPI
-from couchbase.exceptions import DocumentNotFoundException 
+from couchbase.exceptions import DocumentNotFoundException
 from flask import Flask, request
 from paramiko import SSHClient, AutoAddPolicy
 
@@ -43,7 +44,7 @@ from paramiko import SSHClient, AutoAddPolicy
 
 log = logging.getLogger("dynvmservice")
 ch = logging.StreamHandler()
-formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s")
 ch.setFormatter(formatter)
 log.addHandler(ch)
 print("*** Dynamic VMs ***")
@@ -129,14 +130,21 @@ def getavailable_count_service(os='centos'):
         })
         return json.dumps(response)
 
+    log.info("=== DEBUG: Starting getavailable_count_service ===")
+    log.info(f"DEBUG: Input parameters - os='{os}', labels={labels}, ignore_labels={ignore_labels}")
+    
     reserved_count = get_reserved(labels)
+    log.info(f"DEBUG: get_reserved returned: {reserved_count}")
+    
     count, available_counts, xen_hosts = get_all_available_count(os, labels, ignore_labels)
+    log.info(f"DEBUG: get_all_available_count returned - count={count}, available_counts={available_counts}, xen_hosts={xen_hosts}")
     log.info("DEBUG 1")
     log.info("{},{},{},{}".format(count, available_counts, xen_hosts, reserved_count))
     # Subtract reserved_count and return 0 if negative
     count = max(count - reserved_count, 0)
     log.info("Less reserved count: {},{},{},{}".format(count, available_counts, xen_hosts,
                                                  reserved_count))
+    log.info(f"=== DEBUG: Final result: {count} ===")
     return str(count)
 
 def check_vm(os_name, host):
@@ -261,15 +269,30 @@ def decrease_reserved(count, labels):
 
 
 def get_reserved(labels):
+    log.info(f"=== DEBUG: get_reserved called with labels={labels} ===")
+    log.info(f"DEBUG: reserved_count_by_label = {reserved_count_by_label}")
+    
     reserved = 0
     if labels:
+        log.info(f"DEBUG: Processing labels: {labels}")
         for label in labels:
+            log.info(f"DEBUG: Checking label '{label}' in reserved_count_by_label")
             if label in reserved_count_by_label:
+                log.info(f"DEBUG: Label '{label}' found with value {reserved_count_by_label[label]}")
                 reserved = max(reserved, reserved_count_by_label[label])
+                log.info(f"DEBUG: Updated reserved to {reserved}")
+            else:
+                log.info(f"DEBUG: Label '{label}' NOT found in reserved_count_by_label")
     else:
+        log.info("DEBUG: No labels provided, checking for None label")
         label = None
         if label in reserved_count_by_label:
+            log.info(f"DEBUG: None label found with value {reserved_count_by_label[label]}")
             reserved = reserved_count_by_label[label]
+        else:
+            log.info("DEBUG: None label NOT found in reserved_count_by_label")
+    
+    log.info(f"=== DEBUG: get_reserved returning {reserved} ===")
     return reserved
 
 
@@ -546,38 +569,55 @@ def get_config(name):
     return all_config
 
 def get_all_xen_hosts_count(os=None, labels=None, ignore_labels=False):
+    log.info(f"=== DEBUG: get_all_xen_hosts_count called with os='{os}', labels={labels}, ignore_labels={ignore_labels} ===")
+    
     config = read_config()
     xen_host_ref_count = 0
     all_xen_hosts = []
     log.info(config.sections())
+    
+    log.info(f"DEBUG: Processing {len(config.sections())} sections from config")
     for section in config.sections():
         if section.startswith('xenhost'):
+            log.info(f"DEBUG: Processing section '{section}'")
             try:
                 xen_host_ref_count += 1
                 xen_host_ref  = int(section[7:])
+                log.info(f"DEBUG: xen_host_ref = {xen_host_ref}")
+                
                 xen_host = get_xen_values(config, xen_host_ref, os)
+                log.info(f"DEBUG: get_xen_values returned: {xen_host}")
 
                 if ignore_labels:
                     labels_match = True
+                    log.info("DEBUG: ignore_labels=True, so labels_match=True")
                 else:
-                    if xen_host["host.labels"]:
+                    if xen_host and xen_host.get("host.labels"):
+                        log.info(f"DEBUG: xen_host has labels: {xen_host.get('host.labels')}")
                         if not labels:
                             labels_match = False
+                            log.info("DEBUG: No labels provided, so labels_match=False")
                         else:
                             xen_host_labels = set(xen_host["host.labels"])
                             labels = set(labels)
                             labels_match = len(xen_host_labels.intersection(labels)) > 0
+                            log.info(f"DEBUG: xen_host_labels={xen_host_labels}, requested_labels={labels}, intersection={xen_host_labels.intersection(labels)}, labels_match={labels_match}")
                     else:
                         labels_match = not labels
+                        log.info(f"DEBUG: xen_host has no labels, labels_match={labels_match}")
                 
                 if xen_host and labels_match:
+                    log.info(f"DEBUG: Adding xen_host to all_xen_hosts: {xen_host}")
                     all_xen_hosts.append(xen_host)
                 else:
+                    log.info(f"DEBUG: NOT adding xen_host - xen_host={xen_host}, labels_match={labels_match}")
                     xen_host_ref_count -= 1
             except Exception as e:
+                log.info(f"DEBUG: Exception processing section '{section}': {e}")
                 xen_host_ref_count -= 1
                 log.debug(e)
 
+    log.info(f"=== DEBUG: get_all_xen_hosts_count returning - count={xen_host_ref_count}, all_xen_hosts={all_xen_hosts} ===")
     return xen_host_ref_count, all_xen_hosts
 
 
@@ -604,7 +644,12 @@ def get_xen_values(config, xen_host_ref, os):
         else:
             xen_host["host.labels"] = None
         if os is not None:
-            xen_host[os + ".template"] = config.get('xenhost' + str(xen_host_ref), os + '.template')
+            if config.has_option('xenhost' + str(xen_host_ref), os + '.template'):
+                xen_host[os + ".template"] = config.get('xenhost' + str(xen_host_ref), os + '.template')
+            else:
+                log.info(f"No option '{os}.template' in section: 'xenhost{xen_host_ref}'")
+                xen_host = None
+                return xen_host
             if config.has_option('xenhost' + str(xen_host_ref), os + '.template' + '.network'):
                 xen_host[os + ".template.network"] = config.get('xenhost' + str(xen_host_ref), os + '.template' + '.network')
             else:
@@ -1105,12 +1150,19 @@ def get_vm_existed_xenhost_ref(vm_name, count, os="centos"):
 
 
 def get_all_available_count(os="centos", labels=None, ignore_labels=False):
+    log.info(f"=== DEBUG: get_all_available_count called with os='{os}', labels={labels}, ignore_labels={ignore_labels} ===")
+    
     num_xen_hosts, xen_hosts = get_all_xen_hosts_count(os, labels, ignore_labels)
     log.info("Number of xen hosts: {}, {}".format(num_xen_hosts, xen_hosts))
+    log.info(f"DEBUG: xen_hosts list: {xen_hosts}")
+    
     count = 0
     available_counts = []
     xen_hosts_available_refs = []
-    for xen_host in xen_hosts:
+    
+    log.info(f"DEBUG: Processing {len(xen_hosts)} xen hosts")
+    for i, xen_host in enumerate(xen_hosts):
+        log.info(f"DEBUG: Processing xen_host {i+1}/{len(xen_hosts)}: {xen_host}")
         xname = xen_host['name']
         log.info(xname +' --> index: ' + xname[7:])
         xen_host_index = int(xname[7:])
@@ -1130,10 +1182,13 @@ def get_all_available_count(os="centos", labels=None, ignore_labels=False):
             log.warning(str(e))
             continue
         else:
+            log.info(f"DEBUG: Successfully processed xen_host {xname}, count={xcount}")
             available_counts.append(xcount)
             xen_hosts_available_refs.append(str(xen_host_index) + ":" + str(xcount))
             count += xcount
             xsession.logout()
+    
+    log.info(f"=== DEBUG: get_all_available_count returning - count={count}, available_counts={available_counts}, xen_hosts_available_refs={xen_hosts_available_refs} ===")
     return count, available_counts, xen_hosts_available_refs
 
 
@@ -1411,7 +1466,7 @@ class CBDoc:
                 log.error(e)
             time.sleep(5)
             retries -= 1
-    
+
     def add_to_static_pool(self, doc_value, retries=3):
         ip = doc_value["ipaddr"]
         pools_str = ",".join(doc_value["poolId"])
