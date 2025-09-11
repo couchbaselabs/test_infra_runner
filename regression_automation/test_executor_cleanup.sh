@@ -4,6 +4,29 @@ echo new state is $newState
 #curl http://172.23.104.162:8081/releaseservers/${descriptor}/${newState}
 echo upstream build number is $UPSTREAM_BUILD_NUMBER
 
+# Global IP tracking to prevent duplicate releases across all sections
+RELEASED_IPS=""
+
+# Helper function to check if IP was already released
+is_ip_released() {
+  local ip=$1
+  # Simple and reliable check: if RELEASED_IPS contains the exact IP
+  case " $RELEASED_IPS " in
+    *" $ip "*) return 0 ;;  # IP found
+    *) return 1 ;;          # IP not found
+  esac
+}
+
+# Helper function to mark IP as released
+mark_ip_released() {
+  local ip=$1
+  if [ -z "$RELEASED_IPS" ]; then
+    RELEASED_IPS="$ip"
+  else
+    RELEASED_IPS="$RELEASED_IPS $ip"
+  fi
+}
+
 curl -o self_consolelog.json $JOB_URL/${BUILD_NUMBER}/api/json?pretty=true
 
 PARENT_JOB=`cat self_consolelog.json  |egrep 'Started by upstream project' self_consolelog.json -A 3 |egrep 'upstreamUrl'|tail -1|xargs|cut -f2 -d':'|cut -f1 -d','|xargs`
@@ -47,8 +70,14 @@ if [ "${is_dynamic_vms}" == "true" ]; then
   if [ ! "$addPoolServers" = ""  -a ! "$addPoolServers" = "None" ]; then
     for IP in `echo ${addPoolServers}|sed -e 's/"//g' -e 's/,/ /g'`
     do
+      # Skip if IP was already released
+      if is_ip_released "$IP"; then
+        echo "IP $IP already released, skipping duplicate release"
+        continue
+      fi
       echo curl -g ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/available
       curl -g ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/available
+      mark_ip_released "$IP"
     done
   fi
   exit 0
@@ -140,6 +169,12 @@ update_server_pool()
     echo "Call server manager"
     cat ${UNINSTALL_OUT} || true
     for IP in `echo $PASSED_IPS` ; do
+      # Skip if IP was already released
+      if is_ip_released "$IP"; then
+        echo "IP $IP already released, skipping duplicate release"
+        continue
+      fi
+      
       # See CBQE-5309
       if [ -f ${UNINSTALL_OUT} ]; then
         IS_CLEANUP_OK="`cat ${UNINSTALL_OUT} | egrep \"\bDone with cleanup on ${IP}\b\" || true`"
@@ -148,13 +183,16 @@ update_server_pool()
           #$CURL ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/failedInstall
           echo "Clean/uninstall on ${IP} didn't completed but Setting the status as available for passed install VM, ignoring the uninstall status."
           get_url ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/available
+          mark_ip_released "$IP"
         else
           echo "Cleanup is ok. $CURL ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/available"
           get_url ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/available
+          mark_ip_released "$IP"
         fi
       else
         echo "No uninstall log is available. $CURL ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/available"
         get_url ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/available
+        mark_ip_released "$IP"
       fi
     done
     for IP in `echo $FAILED_IPS` ; do
@@ -178,8 +216,14 @@ update_server_pool()
     if [ "${SSH_OK}" != "" ]; then
       echo "SSH ok: $SSH_OK"
       for IP in `echo ${SSH_OK}` ; do
+        # Skip if IP was already released
+        if is_ip_released "$IP"; then
+          echo "IP $IP already released, skipping duplicate release"
+          continue
+        fi
         echo "get_url ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/available"
         get_url ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/available
+        mark_ip_released "$IP"
       done
     fi
     if [[ ("${SSH_FAILED}" = " " && "${SSH_OK}" = " ") ]]; then
@@ -213,8 +257,14 @@ update_server_pool()
  echo "addPoolServers=$addPoolServers"
  if [ ! "$addPoolServers" = ""  -a ! "$addPoolServers" = "None" ]; then
     for IP in `echo ${addPoolServers}|sed -e 's/"//g' -e 's/,/ /g'` ; do
+      # Skip if IP was already released
+      if is_ip_released "$IP"; then
+        echo "IP $IP already released, skipping duplicate release"
+        continue
+      fi
 	    echo $CURL ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/available
       get_url ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/available
+      mark_ip_released "$IP"
     done
  fi
 }
