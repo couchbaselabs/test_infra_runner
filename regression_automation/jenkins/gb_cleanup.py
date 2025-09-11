@@ -4,11 +4,12 @@ from couchbase.cluster import Cluster
 from couchbase.options import ClusterOptions, QueryOptions, UpsertOptions
 import sys
 import os
+import json
 
-CB_HOST = os.getenv("CB_HOST")
+CB_HOST = "couchbase://172.23.120.87"
 CB_BUCKET = "greenboard"
-CB_USERNAME = os.getenv("CB_USERNAME")
-CB_PASSWORD = os.getenv("CB_PASSWORD")
+CB_USERNAME = "Administrator"
+CB_PASSWORD = "esabhcuoc"
 
 def mark_deleted_and_collect(entries, job_name, build_no, delete_all, changed):
     for entry in entries:
@@ -78,15 +79,69 @@ def delete_job(version, job_name, builds, delete_all=False):
 
     return exit_code
 
+def find_job_recursive(obj, job_name):
+    if isinstance(obj, dict):
+        if job_name in obj:
+            return obj[job_name]
+        for value in obj.values():
+            result = find_job_recursive(value, job_name)
+            if result is not None:
+                return result
+    elif isinstance(obj, list):
+        for item in obj:
+            result = find_job_recursive(item, job_name)
+            if result is not None:
+                return result
+    return None
+
+def delete_pending_job(version, job_name):
+    cluster = Cluster(CB_HOST, ClusterOptions(
+        PasswordAuthenticator(CB_USERNAME, CB_PASSWORD)
+    ))
+    cb = cluster.bucket(CB_BUCKET)
+    collection = cb.scope("_default").collection("_default")
+
+    doc_id = "existing_builds_server"
+    doc = collection.get(doc_id, QueryOptions(timeout=timedelta(seconds=120))).content_as[dict]
+    
+    job_entry = find_job_recursive(doc, job_name)
+    
+    if job_entry is None:
+        print(f"Job '{job_name}' not found in existing_builds_server document")
+        return 1
+    
+    if "jobs_in" not in job_entry:
+        print(f"No 'jobs_in' list found for job '{job_name}'")
+        return 1
+    
+    jobs_in_list = job_entry["jobs_in"]
+    
+    if version not in jobs_in_list:
+        print(f"Version '{version}' not found in jobs_in list for job '{job_name}'")
+        return 1
+    
+    jobs_in_list.remove(version)
+    print(f"Removed version '{version}' for job '{job_name}'")
+    
+    collection.upsert(doc_id, doc, UpsertOptions(timeout=timedelta(seconds=120)))
+    print(f"Updated existing_builds_server document in cluster")
+    
+    return 0
+
 if __name__ == "__main__":
     version = sys.argv[1]
     job_name = sys.argv[2]
     build_no = sys.argv[3] if len(sys.argv) > 3 else None
     delete_all = (len(sys.argv) > 4 and sys.argv[4].lower() == "true")
+    is_pending = (len(sys.argv) > 5 and sys.argv[5].lower() == "true")
 
-    if build_no is None and not delete_all:
-        delete_all = True
+    if is_pending:
+        exit_code = delete_pending_job(version, job_name)
+    else:
+        if build_no is None and not delete_all:
+            delete_all = True
 
-    build_nums = build_no.split(',') if build_no else []
-    exit_code = delete_job(version, job_name, build_nums, delete_all)
+        build_nums = build_no.split(',') if build_no else []
+        exit_code = delete_job(version, job_name, build_nums, delete_all)
+    
     sys.exit(exit_code)
