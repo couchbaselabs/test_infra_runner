@@ -6,10 +6,10 @@ import sys
 import os
 import json
 
-CB_HOST = "couchbase://172.23.120.87"
+CB_HOST = os.getenv("CB_HOST")
 CB_BUCKET = "greenboard"
-CB_USERNAME = "Administrator"
-CB_PASSWORD = "esabhcuoc"
+CB_USERNAME = os.getenv("CB_USERNAME")
+CB_PASSWORD = os.getenv("CB_PASSWORD")
 
 def mark_deleted_and_collect(entries, job_name, build_no, delete_all, changed):
     for entry in entries:
