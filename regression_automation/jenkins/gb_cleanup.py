@@ -67,7 +67,7 @@ def delete_job(version, job_name, builds, delete_all=False):
 
     for build_no in builds:
         changed = []
-        doc = exec_update(doc, job_name, build_no, delete_all, changed)
+        doc = exec_update(doc, job_name, int(build_no), delete_all, changed)
 
         if not changed:
             print(f"No matching entries found for job_name={job_name}, build_no={build_no}")
@@ -81,7 +81,7 @@ def delete_job(version, job_name, builds, delete_all=False):
 if __name__ == "__main__":
     version = sys.argv[1]
     job_name = sys.argv[2]
-    build_no = int(sys.argv[3]) if len(sys.argv) > 3 and sys.argv[3].isdigit() else None
+    build_no = sys.argv[3] if len(sys.argv) > 3 else None
     delete_all = (len(sys.argv) > 4 and sys.argv[4].lower() == "true")
 
     if build_no is None and not delete_all:
