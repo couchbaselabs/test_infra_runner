@@ -54,26 +54,29 @@ def exec_update(obj, job_name, build_no=None, delete_all=False, changed=None):
                             entry["olderBuild"] = True
     return obj
 
-def delete_job(version, job_name, build_no=None, delete_all=False):
+def delete_job(version, job_name, builds, delete_all=False):
     cluster = Cluster(CB_HOST, ClusterOptions(
         PasswordAuthenticator(CB_USERNAME, CB_PASSWORD)
     ))
     cb = cluster.bucket(CB_BUCKET)
     collection = cb.scope("_default").collection("_default")
 
+    exit_code = 0
     doc_id = f"{version}_server"
     doc = collection.get(doc_id, QueryOptions(timeout=timedelta(seconds=120))).content_as[dict]
 
-    changed = []
-    doc = exec_update(doc, job_name, build_no, delete_all, changed)
+    for build_no in builds:
+        changed = []
+        doc = exec_update(doc, job_name, build_no, delete_all, changed)
 
-    if not changed:
-        print(f"No matching entries found for job_name={job_name}, build_no={build_no}")
-        sys.exit(1)
+        if not changed:
+            print(f"No matching entries found for job_name={job_name}, build_no={build_no}")
+            exit_code = 1
 
-    collection.upsert(doc_id, doc, UpsertOptions(timeout=timedelta(seconds=120)))
-    print(f"Updated {len(changed)} entries for job '{job_name}', build(s): {changed}")
-    sys.exit(0)
+        collection.upsert(doc_id, doc, UpsertOptions(timeout=timedelta(seconds=120)))
+        print(f"Updated {len(changed)} entries for job '{job_name}', build(s): {changed}")
+
+    return exit_code
 
 if __name__ == "__main__":
     version = sys.argv[1]
@@ -84,4 +87,6 @@ if __name__ == "__main__":
     if build_no is None and not delete_all:
         delete_all = True
 
-    delete_job(version, job_name, build_no, delete_all)
+    build_nums = build_no.split(',') if build_no else []
+    exit_code = delete_job(version, job_name, build_nums, delete_all)
+    sys.exit(exit_code)
