@@ -12,8 +12,11 @@ is_ip_released() {
   local ip=$1
   # Simple and reliable check: if RELEASED_IPS contains the exact IP
   case " $RELEASED_IPS " in
-    *" $ip "*) return 0 ;;  # IP found
-    *) return 1 ;;          # IP not found
+    *" $ip "*) 
+      echo "IP $ip already released, skipping duplicate release"
+      return 0 ;;  # IP found
+    *) 
+      return 1 ;;  # IP not found
   esac
 }
 
@@ -72,7 +75,6 @@ if [ "${is_dynamic_vms}" == "true" ]; then
     do
       # Skip if IP was already released
       if is_ip_released "$IP"; then
-        echo "IP $IP already released, skipping duplicate release"
         continue
       fi
       echo curl -g ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/available
@@ -171,7 +173,6 @@ update_server_pool()
     for IP in `echo $PASSED_IPS` ; do
       # Skip if IP was already released
       if is_ip_released "$IP"; then
-        echo "IP $IP already released, skipping duplicate release"
         continue
       fi
       
@@ -196,8 +197,13 @@ update_server_pool()
       fi
     done
     for IP in `echo $FAILED_IPS` ; do
+      # Skip if IP was already released
+      if is_ip_released "$IP"; then
+        continue
+      fi
       echo "$CURL ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/failedInstall"
       get_url ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/failedInstall
+      mark_ip_released "$IP"
     done
   fi
 
@@ -208,8 +214,13 @@ update_server_pool()
     if [ "${SSH_FAILED}" != "" ]; then
       echo "No SSH connectivity: $SSH_FAILED"
       for IP in `echo ${SSH_FAILED}` ; do
+        # Skip if IP was already released
+        if is_ip_released "$IP"; then
+          continue
+        fi
         echo "get_url ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/failedInstall"
         get_url ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/failedInstall
+        mark_ip_released "$IP"
       done
     fi
     SSH_OK="`egrep 'SSH Connected to' ${PARENT_LOG}|grep -oP '(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'|sort|uniq|| true` "
@@ -218,7 +229,6 @@ update_server_pool()
       for IP in `echo ${SSH_OK}` ; do
         # Skip if IP was already released
         if is_ip_released "$IP"; then
-          echo "IP $IP already released, skipping duplicate release"
           continue
         fi
         echo "get_url ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/available"
@@ -242,11 +252,16 @@ update_server_pool()
       if [ "${SSH_ALL_COUNT}" -gt $((SSH_OK_COUNT+SSH_FAILED_COUNT)) ]; then
         echo "Missing some IPs status!"
         for IP in `echo ${SSH_ALL}` ; do
+          # Skip if IP was already released
+          if is_ip_released "$IP"; then
+            continue
+          fi
           OK_IP=`echo ${SSH_OK} | egrep "${IP} " || true`
           if [ "${OK_IP}" == "" ]; then
             echo "ssh not ok: ${IP}"
             echo "get_url ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/failedInstall"
             get_url ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/failedInstall
+            mark_ip_released "$IP"
           fi
         done
       fi
@@ -259,7 +274,6 @@ update_server_pool()
     for IP in `echo ${addPoolServers}|sed -e 's/"//g' -e 's/,/ /g'` ; do
       # Skip if IP was already released
       if is_ip_released "$IP"; then
-        echo "IP $IP already released, skipping duplicate release"
         continue
       fi
 	    echo $CURL ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/available
