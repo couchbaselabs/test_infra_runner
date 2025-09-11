@@ -104,6 +104,9 @@ def delete_pending_job(version, job_name):
     doc_id = "existing_builds_server"
     doc = collection.get(doc_id, QueryOptions(timeout=timedelta(seconds=120))).content_as[dict]
     
+    # Extract version number (e.g., "7.6.7" from "7.6.7-6708")
+    version_number = version.split('-')[0]
+    
     job_entry = find_job_recursive(doc, job_name)
     
     if job_entry is None:
@@ -116,12 +119,12 @@ def delete_pending_job(version, job_name):
     
     jobs_in_list = job_entry["jobs_in"]
     
-    if version not in jobs_in_list:
-        print(f"Version '{version}' not found in jobs_in list for job '{job_name}'")
+    if version_number not in jobs_in_list:
+        print(f"Version '{version_number}' not found in jobs_in list for job '{job_name}'")
         return 1
     
-    jobs_in_list.remove(version)
-    print(f"Removed version '{version}' for job '{job_name}'")
+    jobs_in_list.remove(version_number)
+    print(f"Removed version '{version_number}' for job '{job_name}'")
     
     collection.upsert(doc_id, doc, UpsertOptions(timeout=timedelta(seconds=120)))
     print(f"Updated existing_builds_server document in cluster")
