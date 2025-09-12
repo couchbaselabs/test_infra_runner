@@ -79,20 +79,19 @@ def delete_job(version, job_name, builds, delete_all=False):
 
     return exit_code
 
-def find_job_recursive(obj, job_name):
+def find_all_job_occurrences(obj, job_name):
+    occurrences = []
+    
     if isinstance(obj, dict):
         if job_name in obj:
-            return obj[job_name]
+            occurrences.append(obj[job_name])
         for value in obj.values():
-            result = find_job_recursive(value, job_name)
-            if result is not None:
-                return result
+            occurrences.extend(find_all_job_occurrences(value, job_name))
     elif isinstance(obj, list):
         for item in obj:
-            result = find_job_recursive(item, job_name)
-            if result is not None:
-                return result
-    return None
+            occurrences.extend(find_all_job_occurrences(item, job_name))
+    
+    return occurrences
 
 def delete_pending_job(version, job_name):
     cluster = Cluster(CB_HOST, ClusterOptions(
@@ -104,27 +103,24 @@ def delete_pending_job(version, job_name):
     doc_id = "existing_builds_server"
     doc = collection.get(doc_id, QueryOptions(timeout=timedelta(seconds=120))).content_as[dict]
     
-    # Extract version number (e.g., "7.6.7" from "7.6.7-6708")
     version_number = version.split('-')[0]
     
-    job_entry = find_job_recursive(doc, job_name)
+    job_occurrences = find_all_job_occurrences(doc, job_name)
     
-    if job_entry is None:
+    if not job_occurrences:
         print(f"Job '{job_name}' not found in existing_builds_server document")
         return 1
     
-    if "jobs_in" not in job_entry:
-        print(f"No 'jobs_in' list found for job '{job_name}'")
+    version_found = False
+    for i, job_entry in enumerate(job_occurrences):
+        if "jobs_in" in job_entry and version_number in job_entry["jobs_in"]:
+            job_entry["jobs_in"].remove(version_number)
+            print(f"Removed version '{version_number}' for job '{job_name}'")
+            version_found = True
+    
+    if not version_found:
+        print(f"Version '{version_number}' not found for job '{job_name}'")
         return 1
-    
-    jobs_in_list = job_entry["jobs_in"]
-    
-    if version_number not in jobs_in_list:
-        print(f"Version '{version_number}' not found in jobs_in list for job '{job_name}'")
-        return 1
-    
-    jobs_in_list.remove(version_number)
-    print(f"Removed version '{version_number}' for job '{job_name}'")
     
     collection.upsert(doc_id, doc, UpsertOptions(timeout=timedelta(seconds=120)))
     print(f"Updated existing_builds_server document in cluster")
