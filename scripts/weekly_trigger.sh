@@ -3,6 +3,9 @@ set +e     # keep going even if there is a shell error e.g. bad wget
 TRIGGER_WEEKLY_JOBS=false
 TRIGGER_UPGRADE_JOBS=false
 TRIGGER_WEEKLY_MAGMA_JOBS=false
+echo "TRIGGER_WEEKLY_JOBS=$TRIGGER_WEEKLY_JOBS"
+echo "TRIGGER_UPGRADE_JOBS=$TRIGGER_UPGRADE_JOBS"
+echo "TRIGGER_WEEKLY_MAGMA_JOBS=$TRIGGER_WEEKLY_MAGMA_JOBS"
 
 sleep_with_message() {
   echo "Sleep for $1 seconds"
