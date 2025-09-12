@@ -1,8 +1,5 @@
 set +e     # keep going even if there is a shell error e.g. bad wget
 
-#TRIGGER_WEEKLY_JOBS=false
-#TRIGGER_UPGRADE_JOBS=false
-#TRIGGER_WEEKLY_MAGMA_JOBS=false
 ${TRIGGER_WEEKLY_JOBS:=false}
 ${TRIGGER_UPGRADE_JOBS:=false}
 ${TRIGGER_WEEKLY_MAGMA_JOBS:=false}
