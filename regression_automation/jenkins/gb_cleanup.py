@@ -127,6 +127,16 @@ def delete_pending_job(version, job_name):
     
     return 0
 
+def parse_job_list(job_input):
+    if ',' in job_input:
+        jobs = [job.strip() for job in job_input.split(',') if job.strip()]
+    elif '\n' in job_input:
+        jobs = [job.strip() for job in job_input.split('\n') if job.strip()]
+    else:
+        jobs = [job_input.strip()]
+    
+    return jobs
+
 if __name__ == "__main__":
     version = sys.argv[1]
     job_name = sys.argv[2]
@@ -134,13 +144,31 @@ if __name__ == "__main__":
     delete_all = (len(sys.argv) > 4 and sys.argv[4].lower() == "true")
     is_pending = (len(sys.argv) > 5 and sys.argv[5].lower() == "true")
 
-    if is_pending:
-        exit_code = delete_pending_job(version, job_name)
+    job_list = parse_job_list(job_name)
+    
+    if len(job_list) > 1:
+        if is_pending:
+            exit_code = 0
+            for job in job_list:
+                print(f"Processing job: {job}")
+                result = delete_pending_job(version, job)
+                if result != 0:
+                    exit_code = result
+        else:
+            exit_code = 0
+            for job in job_list:
+                print(f"Processing job: {job}")
+                result = delete_job(version, job, [], True)
+                if result != 0:
+                    exit_code = result
     else:
-        if build_no is None and not delete_all:
-            delete_all = True
+        if is_pending:
+            exit_code = delete_pending_job(version, job_name)
+        else:
+            if build_no is None and not delete_all:
+                delete_all = True
 
-        build_nums = build_no.split(',') if build_no else []
-        exit_code = delete_job(version, job_name, build_nums, delete_all)
+            build_nums = build_no.split(',') if build_no else []
+            exit_code = delete_job(version, job_name, build_nums, delete_all)
     
     sys.exit(exit_code)
