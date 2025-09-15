@@ -144,13 +144,13 @@ CMDS = {
 
             "rm -rf " + DEFAULT_INSTALL_DIR["LINUX_DISTROS"] + ";" +
             "rm -rf " + DEFAULT_INSTALL_DIR["LINUX_DISTROS_EA"] + ";",
-        "pre_install": "kill -9 `lsof -ti:4369`;" + 
-                       "kill -9 `lsof -ti:8091`;" + 
-                       "kill -9 `lsof -ti:21100`;" + 
-                       "kill -9 `lsof -ti:21200`;" + 
-                       "kill -9 `lsof -ti:21300`;" + 
-                       "kill -9 `lsof -ti:21150`;" + 
-                       "kill -9 `lsof -ti:21250`;" + 
+        "pre_install": "kill -9 `lsof -ti:4369`;" +
+                       "kill -9 `lsof -ti:8091`;" +
+                       "kill -9 `lsof -ti:21100`;" +
+                       "kill -9 `lsof -ti:21200`;" +
+                       "kill -9 `lsof -ti:21300`;" +
+                       "kill -9 `lsof -ti:21150`;" +
+                       "kill -9 `lsof -ti:21250`;" +
                        "kill -9 `lsof -ti:21350`;",
         "install": "DEBIAN_FRONTEND='noninteractive' apt-get -y -f install buildpath > /dev/null && echo 1 || echo 0",
         "post_install": "usermod -aG adm couchbase && systemctl -q is-active couchbase-server.service && echo 1" +
@@ -210,13 +210,13 @@ CMDS = {
             "rm -rf " + DEFAULT_INSTALL_DIR["LINUX_DISTROS_EA"] + ";" +
             "du -ch /data | grep total; rm -rf /data/*;" +
             " > /dev/null && echo 1 || echo 0",
-        "pre_install": "kill -9 `lsof -ti:4369`;" + 
-                       "kill -9 `lsof -ti:8091`;" + 
-                       "kill -9 `lsof -ti:21100`;" + 
-                       "kill -9 `lsof -ti:21200`;" + 
-                       "kill -9 `lsof -ti:21300`;" + 
-                       "kill -9 `lsof -ti:21150`;" + 
-                       "kill -9 `lsof -ti:21250`;" + 
+        "pre_install": "kill -9 `lsof -ti:4369`;" +
+                       "kill -9 `lsof -ti:8091`;" +
+                       "kill -9 `lsof -ti:21100`;" +
+                       "kill -9 `lsof -ti:21200`;" +
+                       "kill -9 `lsof -ti:21300`;" +
+                       "kill -9 `lsof -ti:21150`;" +
+                       "kill -9 `lsof -ti:21250`;" +
                        "kill -9 `lsof -ti:21350`;",
         "install": "yes | yum localinstall -y buildpath > /dev/null && echo 1 || echo 0",
         "set_vm_swappiness_and_thp":
@@ -248,13 +248,13 @@ NON_ROOT_CMDS = {
             "rm -rf " + DEFAULT_INSTALL_DIR["LINUX_DISTROS"] + " > /dev/null && echo 1 || echo 0;"
             "rm -rf " + DEFAULT_NONROOT_INSTALL_DIR["LINUX_DISTROS"] + " > /dev/null && echo 1 || echo 0;"
             "rm -rf " + NON_ROOT_DOWNLOAD_DIR["LINUX_DISTROS"] + "cb ",
-        "pre_install": "kill -9 `lsof -ti:4369`;" + 
-                       "kill -9 `lsof -ti:8091`;" + 
-                       "kill -9 `lsof -ti:21100`;" + 
-                       "kill -9 `lsof -ti:21200`;" + 
-                       "kill -9 `lsof -ti:21300`;" + 
-                       "kill -9 `lsof -ti:21150`;" + 
-                       "kill -9 `lsof -ti:21250`;" + 
+        "pre_install": "kill -9 `lsof -ti:4369`;" +
+                       "kill -9 `lsof -ti:8091`;" +
+                       "kill -9 `lsof -ti:21100`;" +
+                       "kill -9 `lsof -ti:21200`;" +
+                       "kill -9 `lsof -ti:21300`;" +
+                       "kill -9 `lsof -ti:21150`;" +
+                       "kill -9 `lsof -ti:21250`;" +
                        "kill -9 `lsof -ti:21350`;",
         "install":
             "mkdir " + NON_ROOT_DOWNLOAD_DIR["LINUX_DISTROS"] + "cb;"
@@ -463,7 +463,7 @@ WAIT_TIMES = {
 DOWNLOAD_CMD = {
     "deb": WGET_CMD,
     "dmg": CURL_CMD,
-    "msi": WGET_CMD,
+    "msi": WGET_CMD + " --no-check-certificate",
     "rpm": WGET_CMD
 }
 

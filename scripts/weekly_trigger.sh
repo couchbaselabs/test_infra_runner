@@ -1,15 +1,18 @@
 set +e     # keep going even if there is a shell error e.g. bad wget
 
-TRIGGER_WEEKLY_JOBS=false
-TRIGGER_UPGRADE_JOBS=false
-TRIGGER_WEEKLY_MAGMA_JOBS=false
+${TRIGGER_WEEKLY_JOBS:=false}
+${TRIGGER_UPGRADE_JOBS:=false}
+${TRIGGER_WEEKLY_MAGMA_JOBS:=false}
+echo "TRIGGER_WEEKLY_JOBS=$TRIGGER_WEEKLY_JOBS"
+echo "TRIGGER_UPGRADE_JOBS=$TRIGGER_UPGRADE_JOBS"
+echo "TRIGGER_WEEKLY_MAGMA_JOBS=$TRIGGER_WEEKLY_MAGMA_JOBS"
 
 sleep_with_message() {
   echo "Sleep for $1 seconds"
   sleep $1
 }
 
-if [ $TRIGGER_WEEKLY_JOBS == true ]; then
+if [ "$TRIGGER_WEEKLY_JOBS" == "true" ]; then
   # For releases < 7.6 only couchstore will be taken (irrespective of the storage you select)
   # For magma triggers < 7.6, need to do it manually / special triggers
   bucket_storage_param=""
@@ -164,7 +167,7 @@ if [ $TRIGGER_WEEKLY_JOBS == true ]; then
 fi
 
 # Following block is from 'trigger_upgrade_jobs' job
-if [ $TRIGGER_UPGRADE_JOBS == true ]; then
+if [ "$TRIGGER_UPGRADE_JOBS" == "true" ]; then
   wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=12hr_upgrade&component=upgrade&subcomponent=None&url=&serverPoolId=regression&addPoolId=elastic-fts&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info,bucket_storage=couchstore" -O trigger1.log
   sleep_with_message 300
  
@@ -173,7 +176,7 @@ if [ $TRIGGER_UPGRADE_JOBS == true ]; then
 fi
 
 # Following block is from 'trigger_weekly_magma' job
-if [ $TRIGGER_WEEKLY_MAGMA_JOBS == true ]; then
+if [ "$TRIGGER_WEEKLY_MAGMA_JOBS" == "true" ]; then
   wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=magmaWeekly&component=magma&url=&serverPoolId=magmanew&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info,enable_encryption_at_rest=True,enable_audit_encryption_at_rest=True,enable_log_encryption_at_rest=False,enable_config_encryption_at_rest=True,encryptionAtRestDekRotationInterval=60,encryption_at_rest_dek_lifetime=120,bucket_num_vb=1024" -O trigger1.log
   sleep_with_message 300
  
