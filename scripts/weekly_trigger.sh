@@ -49,8 +49,8 @@ if [ "$TRIGGER_WEEKLY_JOBS" == "true" ]; then
 
   sleep_with_message 1200
 
-  echo "### Triggering plasma jobs ###"
-  wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=$version_number&suite=$suite&component=plasma&url=$url&serverPoolId=magmanew&branch=$branch&extraParameters=get-cbcollect-info=True${bucket_storage_param}" -O trigger.log
+  #echo "### Triggering plasma jobs ###"
+  #wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=$version_number&suite=$suite&component=plasma&url=$url&serverPoolId=magmanew&branch=$branch&extraParameters=get-cbcollect-info=True${bucket_storage_param}" -O trigger.log
 
   echo "### Triggering Analytics, Eventing, FTS, Views and Geo weekly jobs ###"
   wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=$version_number&suite=$suite&component=analytics,eventing&url=$url&serverPoolId=regression&branch=$branch&extraParameters=get-cbcollect-info=True" -O trigger.log
