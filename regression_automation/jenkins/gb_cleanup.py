@@ -66,16 +66,27 @@ def delete_job(version, job_name, builds, delete_all=False):
     doc_id = f"{version}_server"
     doc = collection.get(doc_id, QueryOptions(timeout=timedelta(seconds=120))).content_as[dict]
 
-    for build_no in builds:
+    if builds:
+        for build_no in builds:
+            changed = []
+            doc = exec_update(doc, job_name, int(build_no), delete_all, changed)
+
+            if not changed:
+                print(f"No matching entries found for job_name={job_name}, build_no={build_no}")
+                exit_code = 1
+
+            collection.upsert(doc_id, doc, UpsertOptions(timeout=timedelta(seconds=120)))
+            print(f"Updated {len(changed)} entries for job '{job_name}', build(s): {changed}")
+    else:
         changed = []
-        doc = exec_update(doc, job_name, int(build_no), delete_all, changed)
+        doc = exec_update(doc, job_name, None, delete_all, changed)
 
         if not changed:
-            print(f"No matching entries found for job_name={job_name}, build_no={build_no}")
+            print(f"No matching entries found for job_name={job_name}")
             exit_code = 1
 
         collection.upsert(doc_id, doc, UpsertOptions(timeout=timedelta(seconds=120)))
-        print(f"Updated {len(changed)} entries for job '{job_name}', build(s): {changed}")
+        print(f"Updated {len(changed)} entries for job '{job_name}'")
 
     return exit_code
 
