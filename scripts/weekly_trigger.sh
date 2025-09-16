@@ -86,6 +86,9 @@ if [ "$TRIGGER_WEEKLY_JOBS" == "true" ]; then
   echo "### Triggering RQG jobs ###"
   wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=$version_number&suite=$suite&component=rqg&url=$url&serverPoolId=regression&branch=${branch}${bucket_storage_with_extra_params}" -O trigger.log
 
+  echo "### Triggering AiQG jobs ###"
+  wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=$version_number&suite=$suite&component=aiqg&url=$url&serverPoolId=regression&branch=$branch&extraParameters=get-cbcollect-info=True${bucket_storage_param}&use_dockerized_dispatcher=true" -O trigger.log
+
   echo "### Triggering Collections weekly jobs ###"
   wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=$version_number&suite=$suite&component=collections&url=$url&serverPoolId=regression&branch=$branch&extraParameters=get-cbcollect-info=True,log_level=info${bucket_storage_param}&use_dockerized_dispatcher=true" -O trigger.log
   sleep_with_message 600
