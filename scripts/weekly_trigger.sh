@@ -192,21 +192,21 @@ if [ "$TRIGGER_WEEKLY_MAGMA_JOBS" == "true" ]; then
   wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=guardrails&component=nserv&url=&serverPoolId=magmaUpgrade&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info&serverType=ON_PREM_PROVISIONED" -O trigger1.log
   sleep_with_message 300
 
-  wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=magmaWeekly&component=backup_recovery&url=&serverPoolId=magmareg&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info,enable_cdc=True" -O trigger1.log
+  wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=magmaWeekly&component=backup_recovery&url=&serverPoolId=magmareg&branch=${branch}&extraParameters=get-cbcollect-info=True,enable_cdc=True" -O trigger1.log
   sleep_with_message 300
 
-  wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=magmaWeekly&component=xdcr&url=&serverPoolId=magmareg&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info,enable_cdc=True" -O trigger1.log
+  wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=magmaWeekly&component=xdcr&url=&serverPoolId=magmareg&branch=${branch}&extraParameters=get-cbcollect-info=True,enable_cdc=True" -O trigger1.log
   sleep_with_message 300
 
-  wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=magmaWeekly&component=2i&url=&serverPoolId=magmareg&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info,enable_cdc=True" -O trigger1.log
+  wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=magmaWeekly&component=2i&url=&serverPoolId=magmareg&branch=${branch}&extraParameters=get-cbcollect-info=True,enable_cdc=True" -O trigger1.log
   sleep_with_message 300
 
-  wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=magmaWeekly&component=eventing&url=&serverPoolId=magmareg&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info,enable_cdc=True" -O trigger1.log
+  wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=magmaWeekly&component=eventing&url=&serverPoolId=magmareg&branch=${branch}&extraParameters=get-cbcollect-info=True,enable_cdc=True" -O trigger1.log
   sleep_with_message 300
 
-  wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=magmaWeekly&component=fts&url=&serverPoolId=magmareg&addPoolId=elastic-fts&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info,enable_cdc=True" -O trigger1.log
+  wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=magmaWeekly&component=fts&url=&serverPoolId=magmareg&addPoolId=elastic-fts&branch=${branch}&extraParameters=get-cbcollect-info=True,enable_cdc=True" -O trigger1.log
   sleep_with_message 300
 
-  wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=magmaWeekly&component=query&url=&serverPoolId=magmareg&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info,enable_cdc=True" -O trigger1.log
+  wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=magmaWeekly&component=query&url=&serverPoolId=magmareg&branch=${branch}&extraParameters=get-cbcollect-info=True,enable_cdc=True" -O trigger1.log
   sleep_with_message 300
 fi
