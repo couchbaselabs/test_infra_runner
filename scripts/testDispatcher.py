@@ -327,7 +327,7 @@ def extract_individual_tests_from_query_result(col_rel_version,
     if 'mode' in data:
         mode = data["mode"]
     else:
-        mode = 'java'
+        mode = 'rest'
     if 'framework' in data:
         framework = data["framework"]
     else:
