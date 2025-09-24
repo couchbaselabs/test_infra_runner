@@ -21,7 +21,7 @@ from couchbase.options import ClusterOptions
 
 
 # Constants from testDispatcher_sdk4.py
-TEST_SUITE_DB = '172.23.104.162'
+TEST_SUITE_DB = '172.23.216.60'
 TEST_SUITE_DB_USER_NAME = 'Administrator'
 TEST_SUITE_DB_PASSWORD = "esabhcuoc"
 QE_SERVER_POOL_BUCKET = 'QE-server-pool'

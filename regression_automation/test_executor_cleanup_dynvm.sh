@@ -45,7 +45,7 @@ if [ "${SERVER_MANAGER_TYPE}" = "dynamic" ]; then
    fi
    
    #Update for add pool servers
-   QE_SERVER_MANAGER_URL="http://172.23.104.162:8081"
+   QE_SERVER_MANAGER_URL="http://172.23.216.60:8081"
    echo "addPoolServers=$addPoolServers"
    if [ ! "$addPoolServers" = ""  -a ! "$addPoolServers" = "None" ]; then
       for IP in `echo ${addPoolServers}|sed -e 's/"//g' -e 's/,/ /g'`
@@ -105,7 +105,7 @@ cb_cluster_cleanup()
 update_server_pool()
 {
   echo "*** Server Pool release ***"
-  QE_SERVER_MANAGER_URL="http://172.23.104.162:8081"
+  QE_SERVER_MANAGER_URL="http://172.23.216.60:8081"
  
   if [ -f ${PARENT_LOG} ]; then
     #cat ${PARENT_LOG}

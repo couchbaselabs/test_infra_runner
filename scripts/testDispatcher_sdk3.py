@@ -29,9 +29,9 @@ from table_view import TableView
 # need a timeout param
 
 POLL_INTERVAL = 60
-SERVER_MANAGER = '172.23.104.162:8081'
-ADDL_SERVER_MANAGER = '172.23.104.162:8081'
-TEST_SUITE_DB = '172.23.104.162'
+TEST_SUITE_DB = '172.23.216.60'
+SERVER_MANAGER = '%s:8081' % TEST_SUITE_DB
+ADDL_SERVER_MANAGER = '%s:8081' % TEST_SUITE_DB
 SERVER_MANAGER_USER_NAME = 'Administrator'
 SERVER_MANAGER_PASSWORD = "esabhcuoc"
 TIMEOUT = 120
@@ -321,7 +321,7 @@ def extract_individual_tests_from_query_result(col_rel_version,
     mailing_list = data['mailing_list'] \
         if 'mailing_list' in data else 'qa@couchbase.com'
     mode = data["mode"] \
-        if 'mode' in data else "rest"
+        if 'mode' in data else "java"
     slave = data['slave'] \
         if 'slave' in data else "P0"
     support_py3 = data["support_py3"] \
@@ -468,11 +468,11 @@ def main():
                       default="all")
     parser.add_option('-k', '--include_tests', dest='include_tests', default=None)
     parser.add_option('-x', '--server_manager', dest='SERVER_MANAGER',
-                      default='172.23.104.162:8081')
+                      default='172.23.216.60:8081')
     parser.add_option('--addl_server_manager', dest='ADDL_SERVER_MANAGER',
-                      default='172.23.104.162:8081')
+                      default='172.23.216.60:8081')
     parser.add_option('--test_suite_db', dest="TEST_SUITE_DB",
-                      default='172.23.104.162')
+                      default='172.23.216.60')
     parser.add_option('-z', '--timeout', dest='TIMEOUT', default='60')
     parser.add_option('-w', '--check_vm', dest='check_vm', default="False")
     parser.add_option('--ssh_poll_interval', dest='SSH_POLL_INTERVAL', default="20")
@@ -488,6 +488,7 @@ def main():
     parser.add_option('--job_url', dest='job_url', default=None)
     parser.add_option('--sleep_between_trigger', dest='sleep_between_trigger', default=0)
     parser.add_option('--columnar_version', dest='columnar_version', default=0)
+    parser.add_option('--is_dynamic_vms', dest='is_dynamic_vms', default="false")
 
     # set of parameters for testing purposes.
     # TODO: delete them after successful testing
@@ -517,11 +518,13 @@ def main():
           Server manager.......{}
           Timeout..............{}
           nolaunch.............{}
+          is_dynamic_vms.......{}
           """.format(options.run, options.version, RELEASE_VERSION,
                      options.branch, options.os, options.url,
                      options.cherrypick, options.dashboardReportedParameters,
                      options.rerun_params, options.SERVER_MANAGER,
-                     options.TIMEOUT, options.noLaunch))
+                     options.TIMEOUT, options.noLaunch,
+                     options.is_dynamic_vms))
 
     if options.SERVER_MANAGER:
         SERVER_MANAGER = options.SERVER_MANAGER
@@ -584,7 +587,6 @@ def main():
             splitSubcomponents = options.subcomponent.split(',')
             subcomponentString = ''
             for i in range(len(splitSubcomponents)):
-                print('subcomponentString is', subcomponentString)
                 subcomponentString = subcomponentString + "'" + splitSubcomponents[i] + "'"
                 if i < len(splitSubcomponents) - 1:
                     subcomponentString = subcomponentString + ','
@@ -621,43 +623,10 @@ def main():
             tests_dict_list = extract_individual_tests_from_query_result(
                 columnar_rel_version, row)
             testsToLaunch.extend(tests_dict_list)
-        except Exception:
+        except Exception as e:
             print('exception in querying tests, possible bad record')
             print((traceback.format_exc()))
             print(row)
-
-    if not options.fresh_run:
-        # Filter out jobs which have already passed in rerun (not a fresh_run)
-        job_index_to_pop = list()
-        for job_index, test_to_launch in enumerate(testsToLaunch):
-            # build the dashboard descriptor
-            dashboard_desc = urllib.parse.quote(
-                test_to_launch['subcomponent'])
-            if options.dashboardReportedParameters is not None:
-                for o in options.dashboardReportedParameters.split(','):
-                    dashboard_desc += '_' + o.split('=')[1]
-
-            if runTimeTestRunnerParameters is None:
-                parameters = test_to_launch['parameters']
-            else:
-                if test_to_launch['parameters'] == 'None':
-                    parameters = runTimeTestRunnerParameters
-                else:
-                    parameters = test_to_launch['parameters'] \
-                        + ',' + runTimeTestRunnerParameters
-            dispatch_job = find_rerun_job.should_dispatch_job(
-                options.os,
-                test_to_launch['component'],
-                dashboard_desc,
-                options.version,
-                parameters)
-            if not dispatch_job:
-                job_index_to_pop.append(job_index)
-
-        # Popping in reverse so the indexes won't mess up
-        job_index_to_pop.reverse()
-        for job_index in job_index_to_pop:
-            testsToLaunch.pop(job_index)
 
     total_req_servercount = 0
     total_req_addservercount = 0
@@ -687,11 +656,13 @@ def main():
 
     # this are VM/Docker dependent - or maybe not
     launchString = '/buildWithParameters?token=test_dispatcher&' + \
-                   'version_number={0}&confFile={1}&descriptor={2}&component={3}&subcomponent={4}&' + \
-                   'iniFile={5}&parameters={6}&os={7}&initNodes={' \
-                   '8}&installParameters={9}&branch={10}&slave={' \
-                   '11}&owners={12}&mailing_list={13}&mode={14}&timeout={15}&' \
-                   'columnar_version_number={16}&mixed_build_config={17}'
+                   'version_number={0}&confFile={1}&descriptor={2}&' \
+                   'component={3}&subcomponent={4}&' + \
+                   'iniFile={5}&parameters={6}&os={7}&initNodes={8}&' \
+                   'installParameters={9}&branch={10}&slave={11}&' \
+                   'owners={12}&mailing_list={13}&mode={14}&timeout={15}&' \
+                   'columnar_version_number={16}&mixed_build_config={17}&' \
+                   'is_dynamic_vms={18}'
     if options.rerun_params:
         rerun_params = options.rerun_params.strip('\'')
         launchString = launchString + '&' + urllib.parse.urlencode({
@@ -733,7 +704,9 @@ def main():
 
     while len(testsToLaunch) > 0:
         try:
-            if options.noLaunch:
+            if not options.noLaunch:
+                print("\n\n *** Before dispatch, checking for the servers to run a  test suite\n")
+            else:
                 i = 0
                 print("\n\n *** Dispatching job#{} of {} with {} servers (total={}) and {} "
                       "additional "
@@ -763,7 +736,8 @@ def main():
                                           urllib.parse.quote(testsToLaunch[i]['mailing_list']),
                                           testsToLaunch[i]['mode'], testsToLaunch[i]['timeLimit'],
                                           options.columnar_version,
-                                          testsToLaunch[i]['mixed_build_config'])
+                                          testsToLaunch[i]['mixed_build_config'],
+                                          options.is_dynamic_vms)
                 url = url + '&dispatcher_params=' + urllib.parse.urlencode(
                     {"parameters": currentExecutorParams})
                 # optional add [-docker] [-Jenkins extension] - TBD duplicate
@@ -835,11 +809,6 @@ def main():
                     break
 
             if haveTestToLaunch:
-                if options.noLaunch:
-                    job_index += 1
-                    testsToLaunch.pop(i)
-                    continue
-
                 print("\n\n *** Dispatching job#{} of {} with {} servers "
                       "(total={}) and {} additional servers(total={}):  {}-{} with {}\n"
                       .format(job_index, total_jobs_count,
@@ -997,7 +966,8 @@ def main():
                                           testsToLaunch[i]['mode'],
                                           testsToLaunch[i]['timeLimit'],
                                           options.columnar_version,
-                                          testsToLaunch[i]['mixed_build_config'])
+                                          testsToLaunch[i]['mixed_build_config'],
+                                          options.is_dynamic_vms)
                 url = url + '&dispatcher_params=' + \
                                 urllib.parse.urlencode({"parameters":
                                                 currentExecutorParams})
