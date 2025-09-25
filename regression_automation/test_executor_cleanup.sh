@@ -1,7 +1,7 @@
 #set +e
 echo the descriptor is $descriptor
 echo new state is $newState
-#curl http://172.23.216.60:8081/releaseservers/${descriptor}/${newState}
+#curl http://172.23.105.178:8081/releaseservers/${descriptor}/${newState}
 echo upstream build number is $UPSTREAM_BUILD_NUMBER
 
 # Global IP tracking to prevent duplicate releases across all sections
@@ -68,7 +68,7 @@ if [ "${is_dynamic_vms}" == "true" ]; then
 
   # Update for add pool servers to release the
   # additional servers booked from the regular pool
-  QE_SERVER_MANAGER_URL="http://172.23.216.60:8081"
+  QE_SERVER_MANAGER_URL="http://172.23.105.178:8081"
   echo "addPoolServers=$addPoolServers"
   if [ ! "$addPoolServers" = ""  -a ! "$addPoolServers" = "None" ]; then
     for IP in `echo ${addPoolServers}|sed -e 's/"//g' -e 's/,/ /g'`
@@ -159,7 +159,7 @@ get_url()
 update_server_pool()
 {
   echo "*** Server Pool release ***"
-  QE_SERVER_MANAGER_URL="http://172.23.216.60:8081"
+  QE_SERVER_MANAGER_URL="http://172.23.105.178:8081"
   CURL="curl -gs --retry 999 --retry-max-time 2"
 
   if [ -f ${PARENT_LOG} ]; then
