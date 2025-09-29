@@ -186,7 +186,7 @@ if [ "$TRIGGER_WEEKLY_MAGMA_JOBS" == "true" ]; then
   wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=12hr_weekly&component=magma&url=&serverPoolId=magmareg&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info,bucket_storage=magma,enable_encryption_at_rest=True,enable_audit_encryption_at_rest=True,enable_log_encryption_at_rest=False,enable_config_encryption_at_rest=True,encryptionAtRestDekRotationInterval=60,encryption_at_rest_dek_lifetime=120,bucket_num_vb=1024" -O trigger1.log
   sleep_with_message 300
  
-  wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=magmaUpgrade&component=magma&url=&serverPoolId=magmaUpgrade&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info" -O trigger1.log
+  wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=magmaUpgrade&component=magma&url=&serverPoolId=magmaUpgrade&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info,retry_get_process_num=500" -O trigger1.log
   sleep_with_message 86400
 
   wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=guardrails&component=nserv&url=&serverPoolId=magmaUpgrade&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info&serverType=ON_PREM_PROVISIONED" -O trigger1.log
