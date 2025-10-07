@@ -3,9 +3,12 @@ set +e     # keep going even if there is a shell error e.g. bad wget
 ${TRIGGER_WEEKLY_JOBS:=false}
 ${TRIGGER_UPGRADE_JOBS:=false}
 ${TRIGGER_WEEKLY_MAGMA_JOBS:=false}
+${TRIGGER_OS_CERT_JOBS:=false}
+
 echo "TRIGGER_WEEKLY_JOBS=$TRIGGER_WEEKLY_JOBS"
 echo "TRIGGER_UPGRADE_JOBS=$TRIGGER_UPGRADE_JOBS"
 echo "TRIGGER_WEEKLY_MAGMA_JOBS=$TRIGGER_WEEKLY_MAGMA_JOBS"
+echo "TRIGGER_OS_CERT_JOBS=$TRIGGER_OS_CERT_JOBS"
 
 sleep_with_message() {
   echo "Sleep for $1 seconds"
@@ -173,7 +176,7 @@ fi
 if [ "$TRIGGER_UPGRADE_JOBS" == "true" ]; then
   wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=12hr_upgrade&component=upgrade&subcomponent=None&url=&serverPoolId=regression&addPoolId=elastic-fts&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info,bucket_storage=couchstore" -O trigger1.log
   sleep_with_message 300
- 
+
   wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=12hr_upgrade&component=2i,analytics,cli,backup_recovery,fts,query,xdcr&subcomponent=None&url=&serverPoolId=regression&addPoolId=elastic-fts&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info,bucket_storage=couchstore" -O trigger1.log
   sleep_with_message 300
 fi
@@ -182,7 +185,7 @@ fi
 if [ "$TRIGGER_WEEKLY_MAGMA_JOBS" == "true" ]; then
   wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=magmaWeekly&component=magma&url=&serverPoolId=magmanew&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info,enable_encryption_at_rest=True,enable_audit_encryption_at_rest=True,enable_log_encryption_at_rest=False,enable_config_encryption_at_rest=True,encryptionAtRestDekRotationInterval=60,encryption_at_rest_dek_lifetime=120,bucket_num_vb=1024" -O trigger1.log
   sleep_with_message 300
- 
+
   wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=12hr_weekly&component=magma&url=&serverPoolId=magmareg&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info,bucket_storage=magma,enable_encryption_at_rest=True,enable_audit_encryption_at_rest=True,enable_log_encryption_at_rest=False,enable_config_encryption_at_rest=True,encryptionAtRestDekRotationInterval=60,encryption_at_rest_dek_lifetime=120,bucket_num_vb=1024" -O trigger1.log
   sleep_with_message 300
  
@@ -209,4 +212,100 @@ if [ "$TRIGGER_WEEKLY_MAGMA_JOBS" == "true" ]; then
 
   wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=magmaWeekly&component=query&url=&serverPoolId=magmareg&branch=${branch}&extraParameters=get-cbcollect-info=True,enable_cdc=True" -O trigger1.log
   sleep_with_message 300
+fi
+
+if [ "$TRIGGER_OS_CERT_JOBS" == "true" ]; then
+  # Set os_specific flags default to false if not set
+  ${Ubuntu24:=false}
+  ${Ubuntu24_arm:=false}
+  ${al2023:=false}
+  ${al2023_arm:=false}
+  ${rhel9:=false}
+  ${oel8:=false}
+  ${alma9:=false}
+  ${alma10:=false}
+  ${rhel10:=false}
+  ${oel10:=false}
+  ${rocky10:=false}
+  ${debian13:=false}
+  ${ubuntu24_nonroot:=false}
+  ${windows22:=false}
+
+  echo "### Triggering OS Certification jobs ###"
+  base_url="http://qa.sc.couchbase.com/job/test_suite_dispatcher_aws/buildWithParameters"
+  default_dispatcher="http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters"
+
+  common_params="token=extended_sanity&version_number=${version_number}&suite=12hr_weekly&component=os_certify&subcomponent=None&url=&serverPoolId=os_certification&addPoolId=elastic-fts&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info,bucket_storage=couchstore"
+  linux_common_params="$common_params&executor_job_parameters=installParameters=use_hostnames=true"
+  windows_common_params="$common_params&fresh_run=true&use_dynamic_vms=true&executor_job_parameters=installParameters=timeout=1200,skip_local_download=True"
+
+  if [ "${Ubuntu24}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=ubuntu24" -O trigger.log
+    sleep 120
+  fi
+
+  if [ "${Ubuntu24_arm}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=ubuntu24&architecture=aarch64" -O trigger.log
+    sleep 120
+  fi
+
+  if [ "${al2023}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=al2023" -O trigger.log
+    sleep 120
+  fi
+
+  if [ "${al2023_arm}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=al2023&architecture=aarch64" -O trigger.log
+    sleep 120
+  fi
+
+  if [ "${rhel9}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=rhel9" -O trigger.log
+    sleep 120
+  fi
+
+  if [ "${oel8}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=oel8" -O trigger.log
+    sleep 120
+  fi
+
+  if [ "${alma9}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=alma9" -O trigger.log
+    sleep 120
+  fi
+
+  if [ "${alma10}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=alma10" -O trigger.log
+    sleep 120
+  fi
+
+  if [ "${rhel10}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=rhel10" -O trigger.log
+    sleep 120
+  fi
+
+  if [ "${oel10}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=oel10" -O trigger.log
+    sleep 120
+  fi
+
+  if [ "${rocky10}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=rocky10" -O trigger.log
+    sleep 120
+  fi
+
+  if [ "${debian13}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=debian13" -O trigger.log
+    sleep 120
+  fi
+
+  if [ "${ubuntu24_nonroot}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=ubuntu24nonroot" -O trigger.log
+    sleep 120
+  fi
+
+  if [ "${windows22}" = true ]; then
+    wget "${default_dispatcher}?${windows_common_params}&OS=windows22" -O trigger.log
+    sleep 120
+  fi
 fi
