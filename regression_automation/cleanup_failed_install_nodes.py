@@ -30,6 +30,9 @@ cleanup_commands = [
     # IPv6 ip6tables cleanup
     "ip6tables -t nat -F ; ip6tables -t mangle -F ; ip6tables -X",
 
+    # Remove possibly broken updates or lock files
+    "rm -f /var/lib/dpkg/updates/*",
+
     # Abort any ongoing dpkg operations
     "dpkg --configure -a",
 
@@ -39,9 +42,6 @@ cleanup_commands = [
 
     # Clean up dpkg state files (only if really stuck — be cautious)
     # "rm -f /var/lib/dpkg/lock* /var/cache/apt/archives/lock /var/lib/apt/lists/lock",
-
-    # Remove possibly broken updates or lock files
-    # "rm -f /var/lib/dpkg/updates/*",
 
     # Reconfigure dpkg database in case it's inconsistent
     # Clears the available packages list
