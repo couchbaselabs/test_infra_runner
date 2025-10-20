@@ -308,4 +308,24 @@ if [ "$TRIGGER_OS_CERT_JOBS" == "true" ]; then
     wget "${default_dispatcher}?${windows_common_params}&OS=windows22" -O trigger.log
     sleep 120
   fi
+
+  if [ "${oel9}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=oel9" -O trigger.log
+    sleep 120
+  fi
+
+  if [ "${rocky9}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=rocky9" -O trigger.log
+    sleep 120
+  fi
+
+  if [ "${debian12}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=debian12" -O trigger.log
+    sleep 120
+  fi
+
+  if [ "${suse15}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=suse15" -O trigger.log
+    sleep 120
+  fi
 fi
