@@ -12,7 +12,8 @@ CB_VERSION_NAME = {"0.0": "master",
                    "7.5": "elixir",
                    "7.6": "trinity",
                    "7.7": "cypher",
-                   "8.0": "morpheus"}
+                   "8.0": "morpheus",
+                   "8.1": "totoro"}
 
 COLUMNAR_VERSION_NAME = {
     "1.0.0": ["1.0.0"],
@@ -41,7 +42,8 @@ CB_RELEASE_BUILDS = {"0.0.0": "0000",
                      "7.6.3": "0000", "7.6.4": "0000", "7.6.5": "0000",
                      "7.6.6": "0000",
                      "7.7.0": "1000",
-                     "8.0.0": "0000"}
+                     "8.0.0": "0000",
+                     "8.1.0": "0000"}
 
 MACOS_NAME = {"10.10": "Yosemite", "10.11": "El Capitan", "10.12": "Sierra",
               "10.13": "High Sierra", "10.14": "Mojave", "10.15": "Catalina",
