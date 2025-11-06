@@ -140,7 +140,7 @@ def clean_directories_on_slaves(slaves, username, password, days_threshold, keep
             logger.error(f"{count}/{length_slaves} Error on {host}: {e}")
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=25) as executor:
-        futures = [executor.submit(clean_directories_on_host, ip_addr, count, len(slaves), username, password, days_threshold, keep_recent) \
+        futures = [executor.submit(clean_directories_on_host, ip_addr, count+1, len(slaves), username, password, days_threshold, keep_recent) \
                     for count, ip_addr in enumerate(slaves)]
         for future in concurrent.futures.as_completed(futures):
             future.result()
@@ -184,7 +184,7 @@ def get_all_slave_ips(jenkins_url, username, password):
     all_ips = {}
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=25) as executor:
-        futures = [executor.submit(get_jenkins_slaves_ip, jenkins_url,count, name, len(slaves), username, password, all_ips) for count, name in enumerate(slaves)]
+        futures = [executor.submit(get_jenkins_slaves_ip, jenkins_url, count+1, name, len(slaves), username, password, all_ips) for count, name in enumerate(slaves)]
         for future in concurrent.futures.as_completed(futures):
             future.result()
 
@@ -204,15 +204,13 @@ def get_connectable_ips(ip_list):
             else:
                 logger.critical(f'{count+1}/{total} SSH connection to {ip} failed. No expected output.')
             ssh.close()
-            return True
         except Exception as e:
             logger.error(f'{count+1}/{total} SSH connection to {ip} failed. Error: {str(e)}')
-            return False
 
     connectable_ips = {}
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=25) as executor:
-        futures = [executor.submit(check_ssh_connection, ip, count, len(ip_list),  SLAVE_USERNAME, SLAVE_PASSWORD, connectable_ips) for count, ip in enumerate(ip_list)]
+        futures = [executor.submit(check_ssh_connection, ip, count+1, len(ip_list), SLAVE_USERNAME, SLAVE_PASSWORD, connectable_ips) for count, ip in enumerate(ip_list)]
         for future in concurrent.futures.as_completed(futures):
             future.result()
 
