@@ -92,9 +92,10 @@ def clean_directories_on_slaves(slaves, username, password, days_threshold, keep
                     try:
                         sftp.remove(f)
                         logger.info(f"{count}/{length_slaves} Deleted COPY file {f} on host {host}")
-                        files.pop(f)
                     except Exception as e:
                         logger.error(f"{count}/{length_slaves} Failed to delete COPY file {f} on host {host}: {e}")
+                    finally:
+                        files.pop(f)
 
                 # Delete old files
                 old_files = [f for f in files if files[f] < cutoff_time]
@@ -109,7 +110,7 @@ def clean_directories_on_slaves(slaves, username, password, days_threshold, keep
                 recent_files = sorted(
                     [f for f in files if files[f] >= cutoff_time],
                     key=lambda x: files[x],
-                    reverse=False
+                    reverse=True
                 )
 
                 if len(recent_files) <= keep_recent:
@@ -158,7 +159,7 @@ def get_jenkins_slaves(jenkins_url):
         logger.error(f'JSON decode error: {e}')
     return []
 
-def get_jenkins_slaves_ip(jenkins_url,count, slave_name, total, username, password, res_dic):
+def get_jenkins_slaves_ip(jenkins_url, count, slave_name, total, username, password, res_dic):
     url = f'{jenkins_url}/computer/{slave_name}/config.xml'
     try:
         response = requests.get(url, auth=(username, password))
@@ -211,7 +212,7 @@ def get_connectable_ips(ip_list):
     connectable_ips = {}
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=25) as executor:
-        futures = [executor.submit(check_ssh_connection, ip, count, len(ip_list),  'root', 'couchbase', connectable_ips) for count, ip in enumerate(ip_list)]
+        futures = [executor.submit(check_ssh_connection, ip, count, len(ip_list),  SLAVE_USERNAME, SLAVE_PASSWORD, connectable_ips) for count, ip in enumerate(ip_list)]
         for future in concurrent.futures.as_completed(futures):
             future.result()
 
