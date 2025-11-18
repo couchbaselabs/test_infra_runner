@@ -1,0 +1,74 @@
+pipeline {
+  agent {
+    label 'trigger-weekly-regression'
+  }
+
+  options {
+    timestamps()
+
+    buildDiscarder(
+      logRotator(
+        artifactDaysToKeepStr: '30',
+        artifactNumToKeepStr: '100',
+        daysToKeepStr: '30',
+        numToKeepStr: '100',
+      )
+    )
+
+    disableConcurrentBuilds()
+  }
+
+  parameters {
+    string(name: 'JENKINS_SLAVE_LABELS', defaultValue: '')
+    string(name: 'BUILD_URL', defaultValue: 'http://172.23.126.166/builds/latestbuilds/couchbase-server/morpheus/3429/couchbase-server-enterprise_8.0.0-3429-linux_amd64.deb')
+  }
+
+  environment {
+    JENKINS_USER_QA = credentials('jenkins-user-qa')
+    JENKINS_PASSWORD_QA = credentials('jenkins-password-qa')
+    JENKINS_USER_QE = credentials('jenkins-user-qe')
+    JENKINS_PASSWORD_QE = credentials('jenkins-password-qe')
+    SLAVE_USERNAME = credentials('slave-username')
+    SLAVE_PASSWORD = credentials('slave-password')
+  }
+
+  stages {
+
+    stage('Cleanup Slaves') {
+        steps {
+            sh "python3 regression_automation/regression_trigger/cleanup_slaves.py --days_threshold=7 --keep_recent=3"
+        }
+    }
+
+    stage('Download on all slaves') {
+        steps {
+            script {
+                sh """
+                version_number=$(echo "${params.BUILD_URL}" | sed -E 's/.*couchbase-server-enterprise_([0-9]+\.[0-9]+\.[0-9]+-[0-9]+).*/\1/')
+                echo $version_number
+                for file in slaves_*.ini; do
+                    if [[ -f "$file" ]]; then
+                        docker run --rm \
+                        -v ${env.WORKSPACE}/$file:/testrunner/$file \
+                        testrunner:install python3 scripts/new_install.py \
+                        -i $file \
+                        -p version=${version_number},timeout=1200,skip_local_download=True,install_tasks=download_build,product=cb,debug_logs=True,${build_url_param} 
+                    fi
+                done
+                """
+            }
+        }
+    }
+
+    stage('Trigger Regression Runs') {
+    }
+  }
+
+  post {
+    always {
+      sh 'docker system prune --force' // Clean up docker - optimise disk usage
+      archiveArtifacts artifacts: '**/*', allowEmptyArchive: true
+      cleanWs()
+    }
+  }
+}
