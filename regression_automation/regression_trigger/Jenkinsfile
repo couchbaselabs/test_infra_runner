@@ -36,7 +36,7 @@ pipeline {
 
     stage('Cleanup Slaves') {
         steps {
-            sh "python3 regression_automation/regression_trigger/cleanup_slaves.py --days_threshold=7 --keep_recent=3"
+            sh "python3 regression_automation/regression_trigger/cleanup_slaves.py --days_threshold=7 --keep_recent=3 --ini_file_size=5 --label_filter=${params.JENKINS_SLAVE_LABELS}"
         }
     }
 
