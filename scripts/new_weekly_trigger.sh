@@ -110,9 +110,9 @@ extra_params=""
 trigger_old_dispatcher_call
 sleep 600
 
-echo "### Triggering security weekly jobs ###"
+echo "### Triggering nserv_sec weekly jobs ###"
 suite_to_use=$suite
-components_to_trigger="security"
+components_to_trigger="nserv_sec"
 extra_params="get-cbcollect-info=True${bucket_storage_param}"
 trigger_old_dispatcher_call
 
