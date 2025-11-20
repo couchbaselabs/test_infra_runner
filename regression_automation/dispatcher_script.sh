@@ -31,9 +31,6 @@ if [ ${use_dynamic_vms} == true ]; then
     exit 1
   fi
 
-  # Force avoid using docker if dynamic vm dispatcher is selected
-  use_dockerized_dispatcher=false
-
   # using CHECK_SSH as false since that was default in dispatcher_dynvm job as well
   CHECK_SSH=False
   SERVER_MGR_OPTIONS="-x 172.23.121.132:5000 -z 2000 -w $CHECK_SSH --is_dynamic_vms true"
