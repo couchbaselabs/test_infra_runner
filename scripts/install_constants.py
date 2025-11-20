@@ -26,13 +26,13 @@ REINIT_NODE_TASKS = ["init", "cleanup"]
 SUPPORTED_PRODUCTS = ["couchbase", "couchbase-server", "cb"]
 AMAZON = ["amzn2","al2023"]
 CENTOS = ["centos6", "centos7", "centos8"]
-DEBIAN = ["debian8", "debian9", "debian10", "debian11", "debian12"]
+DEBIAN = ["debian8", "debian9", "debian10", "debian11", "debian12", "debian13"]
 OEL = ["oel7", "oel8","oel9"]
-RHEL = ["rhel7", "rhel8", "rhel9"]
+RHEL = ["rhel7", "rhel8", "rhel9", "rhel10"]
 SUSE = ["suse12", "suse15"]
 UBUNTU = ["ubuntu16.04", "ubuntu18.04", "ubuntu20.04","ubuntu22.04", "ubuntu24.04"]
 ALMA = ["alma9"]
-ROCKY = ['rocky9']
+ROCKY = ['rocky9', 'rocky10']
 MARINER = ["mariner2"]
 LINUX_DISTROS = AMAZON + CENTOS + DEBIAN + OEL + RHEL + SUSE + UBUNTU + ALMA + ROCKY + MARINER
 MACOS_VERSIONS = ["10.13", "10.14", "10.15", "11.1", "11.2", "11.3", "12.3", "14.2", "macos"]
@@ -84,7 +84,7 @@ CURL_CMD = "curl {0} -o {1} -z {1} -s -m 30"
 LOCAL_BUILD_SIZE_CMD = "cd {} && wc -c {}"
 CB_ENTERPRISE = "couchbase-server-enterprise"
 CB_COMMUNITY = "couchbase-server-community"
-CB_ENTERPRISE_ANALYTICS =  "enterprise-analytics"
+CB_ENTERPRISE_ANALYTICS = "enterprise-analytics"
 CB_EDITIONS = [CB_COMMUNITY, CB_ENTERPRISE]
 CB_DOWNLOAD_SERVER = "172.23.126.166"
 
@@ -123,7 +123,22 @@ CMDS = {
             "systemctl -q stop couchbase-server;" +
             "systemctl -q stop " + CB_ENTERPRISE_ANALYTICS + ";" +
             UNMOUNT_NFS_CMD +
-            "service ntp restart ; "
+
+            # ### Block for fixing ntp service using chrony
+            # Disable/remove conflicting services
+            "systemctl disable --now systemd-timesyncd 2>/dev/null || true ;"
+            "systemctl disable --now ntp 2>/dev/null || true;"
+            "apt purge -y ntp 2>/dev/null || true;"
+            "apt autoremove -y 2>/dev/null || true;"
+
+            # Install chrony
+            "apt update && apt install -y chrony ; "
+            # Enable and start chrony
+            "systemctl enable --now chrony;"
+            # Force immediate sync
+            "chronyc makestep;"
+            # ### End of block for fixing ntp service issues
+
             "apt-get purge -y 'couchbase*' > /dev/null; sleep 10;"
             "dpkg --purge $(dpkg -l | grep -e couchbase -e " + CB_ENTERPRISE_ANALYTICS + " | awk '{print $2}'"
             " | xargs echo); sleep 10; "
@@ -136,12 +151,12 @@ CMDS = {
             "rm -rf /var/lib/dpkg/info/couchbase-server*;"
             "rm -rf /var/lib/dpkg/info/" + CB_ENTERPRISE_ANALYTICS + "*;"
             "du -ch /data | grep total; rm -rf /data/*;"
+            "apt install -y wget curl; "
             "dpkg --configure -a; apt-get update; "
             "journalctl --vacuum-size=100M; journalctl --vacuum-time=10d; "
             "grep 'kernel.dmesg_restrict=0' /etc/sysctl.conf || "
             "(echo 'kernel.dmesg_restrict=0' >> /etc/sysctl.conf "
             "&& service procps restart) ; "
-
             "rm -rf " + DEFAULT_INSTALL_DIR["LINUX_DISTROS"] + ";" +
             "rm -rf " + DEFAULT_INSTALL_DIR["LINUX_DISTROS_EA"] + ";",
         "pre_install": "kill -9 `lsof -ti:4369`;" +
@@ -207,6 +222,7 @@ CMDS = {
             "yes | yum remove '" + CB_ENTERPRISE_ANALYTICS + "*' > /dev/null; " +
             "rm -rf /tmp/tmp* ; " +
             "rm -rf " + DEFAULT_INSTALL_DIR["LINUX_DISTROS"] + "; " +
+            "rm -rf " + DEFAULT_NONROOT_INSTALL_DIR["LINUX_DISTROS"] + " > /dev/null && echo 1 || echo 0",
             "rm -rf " + DEFAULT_INSTALL_DIR["LINUX_DISTROS_EA"] + ";" +
             "du -ch /data | grep total; rm -rf /data/*;" +
             " > /dev/null && echo 1 || echo 0",
@@ -228,6 +244,7 @@ CMDS = {
             "zypper --ignore-unknown rm -y 'couchbase*' > /dev/null; " +
             "rm -rf /var/cache/zypper/RPMS/couchbase* ;" +
             "rm -rf " + DEFAULT_INSTALL_DIR["LINUX_DISTROS"] + "; " +
+            "rm -rf " + DEFAULT_NONROOT_INSTALL_DIR["LINUX_DISTROS"] + " > /dev/null && echo 1 || echo 0 ; " +
             "rm -rf " + DEFAULT_INSTALL_DIR["LINUX_DISTROS_EA"] + ";" +
             " > /dev/null && echo 1 || echo 0",
         "mariner_install" : "tdnf -y install buildpath > /dev/null && echo 1 || echo 0",
@@ -339,7 +356,14 @@ NON_ROOT_MANUAL_CMDS = {
             "rm /var/lib/dpkg/info/couchbase-server.*; " +
             "rm -rf " + DEFAULT_INSTALL_DIR["LINUX_DISTROS"] + " > /dev/null && echo 1 || echo 0;"
             "rm -rf " + DEFAULT_NONROOT_INSTALL_DIR["LINUX_DISTROS"] + " > /dev/null && echo 1 || echo 0;",
-        "pre_install": None,
+        "pre_install": "kill -9 `lsof -ti:4369`;" +
+                       "kill -9 `lsof -ti:8091`;" +
+                       "kill -9 `lsof -ti:21100`;" +
+                       "kill -9 `lsof -ti:21200`;" +
+                       "kill -9 `lsof -ti:21300`;" +
+                       "kill -9 `lsof -ti:21150`;" +
+                       "kill -9 `lsof -ti:21250`;" +
+                       "kill -9 `lsof -ti:21350`;",
         "install":
             "dpkg-deb -x buildpath $HOME > /dev/null && echo 1 || echo 0;"
             "cd " + NON_ROOT_DOWNLOAD_DIR["LINUX_DISTROS"] + "/opt/couchbase/; "
