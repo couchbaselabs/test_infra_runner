@@ -63,8 +63,8 @@ if [ "$TRIGGER_WEEKLY_JOBS" == "true" ]; then
 
   sleep_with_message 600
 
-  echo "### Triggering security weekly jobs ###"
-  wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=$version_number&suite=$suite&component=security&url=$url&serverPoolId=regression&branch=$branch&extraParameters=get-cbcollect-info=True${bucket_storage_param}" -O trigger.log
+  echo "### Triggering nserv_sec weekly jobs ###"
+  wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=$version_number&suite=$suite&component=nserv_sec&url=$url&serverPoolId=regression&branch=$branch&extraParameters=get-cbcollect-info=True${bucket_storage_param}" -O trigger.log
 
   # echo "### Triggering RBAC Upgrade jobs ###"
   # wget  "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=$version_number&suite=12hour&component=cli&subcomponent=offline-upgrade-rbac&url=$url&serverPoolId=regression&branch=$branch&addPoolId=elastic-fts"
