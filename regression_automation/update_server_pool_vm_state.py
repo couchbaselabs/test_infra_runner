@@ -93,8 +93,18 @@ Examples:
 
     parser.add_argument(
         '--server-ip',
-        required=True,
-        help='Server IP address to update'
+        required=False,
+        default=None,
+        help='Server IP address to update (at least one of --server-ip or '
+             '--vm-username must be provided)'
+    )
+
+    parser.add_argument(
+        '--vm-username',
+        required=False,
+        default=None,
+        help="Set of VM's username for which the state will be updated "
+             "(at least one of --server-ip or --vm-username must be provided)"
     )
 
     parser.add_argument(
@@ -113,7 +123,14 @@ Examples:
         help='Log level (default: INFO)'
     )
 
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    # Validate that at least one of server-ip or vm-username is provided
+    if not args.server_ip and not args.vm_username:
+        parser.error("At least one of --server-ip or --vm-username must be "
+                     "provided")
+
+    return args
 
 
 def open_sdk_connection(cluster_ip, username, password):
@@ -150,7 +167,7 @@ def open_sdk_connection(cluster_ip, username, password):
 
 
 def update_server_state(cluster, bucket_name, scope_name, collection_name,
-                        server_ip, state):
+                        server_ip, vm_username, state):
     """
     Execute N1QL update query to change server state.
 
@@ -160,43 +177,62 @@ def update_server_state(cluster, bucket_name, scope_name, collection_name,
         scope_name: Scope name
         collection_name: Collection name
         server_ip: Server IP address to update
+        vm_username: VM username to update
         state: New state to set
 
     Returns:
         bool: True if update was successful, False otherwise
     """
-    try:
-        # First, query the current document to get username and state
-        query = (
-            f"SELECT username, state FROM `{bucket_name}`.`{scope_name}`."
-            f"`{collection_name}` WHERE ipaddr='{server_ip}'"
+    if server_ip:
+        select_query = (
+            f"SELECT ipaddr, username, state FROM `{bucket_name}`."
+            f"`{scope_name}`.`{collection_name}` "
+            f"WHERE ipaddr='{server_ip}'"
         )
-        log.info(f"Query: {query}")
 
-        select_result = cluster.query(query)
-        current_username, current_state = None, None
-
-        # Iterate through result rows to get current values
-        for row in select_result.rows():
-            current_username = row.get('username', 'N/A')
-            current_state = row.get('state', 'N/A')
-            log.info(f"\n{server_ip}:\n"
-                     f"  -> Current username ='{current_username}'\n"
-                     f"  -> Current state    ='{current_state}'")
-            # Only need first row to get current values
-            break
-
-        if current_username is None:
-            log.critical(f"Document not found for ipaddr='{server_ip}'")
-        if current_state != "booked":
-            log.critical(f"Server {server_ip} is not in booked state")
-
-        # Format the N1QL update query using scope and collection names
         update_query = (
             f"UPDATE `{bucket_name}`.`{scope_name}`.`{collection_name}` "
             f"SET state='{state}' "
             f"WHERE ipaddr='{server_ip}' AND state='booked'"
         )
+    else:
+        select_query = (
+            f"SELECT ipaddr, username, state FROM `{bucket_name}`."
+            f"`{scope_name}`.`{collection_name}` "
+            f"WHERE username='{vm_username}'"
+        )
+
+        update_query = (
+            f"UPDATE `{bucket_name}`.`{scope_name}`.`{collection_name}` "
+            f"SET state='{state}' "
+            f"WHERE username='{vm_username}' AND state='booked'"
+        )
+    log.info(f"Query: {select_query}")
+    try:
+        select_result = cluster.query(select_query)
+
+        # Iterate through result rows to get current values
+        num_documents = 0
+
+        for row in select_result.rows():
+            current_ip = row.get('ipaddr', 'N/A')
+            current_username = row.get('username', 'N/A')
+            current_state = row.get('state', 'N/A')
+            num_documents += 1
+            log.info(f"\n{current_ip}:\n"
+                     f"  -> Current username ='{current_username}'\n"
+                     f"  -> Current state    ='{current_state}'")
+
+            if current_state != "booked":
+                log.critical(f"{current_ip} state='{current_state}' != "
+                             f"'booked'")
+
+        if num_documents == 0:
+            log.critical(f"Document not found for server-ip='{server_ip}' "
+                         f"or vm-username='{vm_username}'")
+            return False
+
+        # Query to update the state
         log.info(f"Query: {update_query}")
 
         # Execute the query using cluster object
@@ -228,30 +264,16 @@ def update_server_state(cluster, bucket_name, scope_name, collection_name,
         except Exception as e:
             log.debug(f"Could not access mutation count: {e}")
 
-        # Check mutation count
+        # Check mutation count and log appropriately
         if mutation_count is not None:
             log.info(f"Mutation count: {mutation_count}")
-            if mutation_count > 0:
-                log.info(f"Success: {server_ip} state='{state}' "
-                         f"(mutation count={mutation_count})")
-                return True
-            else:
-                # Mutation count is 0, but query executed without errors.
-                # This could mean no rows matched the WHERE clause, or
-                # mutation_count is not reliable. Since query executed
-                # successfully, we'll log info and return True.
-                log.critical(f"{server_ip} state='{state}' (mutation count=0)")
-                return True
         else:
-            # If mutation count is not available, assume query executed
-            # successfully if no exceptions were raised. The query execution
-            # itself indicates success, even if we can't verify the count.
-            log.info(f"Success: {server_ip} state='{state}' "
-                     f"(mutation count unavailable)")
-            return True
+            log.warning("Mutation count unavailable (query executed "
+                        "successfully)")
+        return True
     except Exception as e:
         log.error(f"Failed to execute update query: {str(e)}")
-        raise
+        return False
 
 
 def main():
@@ -282,6 +304,7 @@ def main():
             args.qe_server_pool_scope,
             args.qe_server_pool_collection,
             args.server_ip,
+            args.vm_username,
             args.state
         )
 
