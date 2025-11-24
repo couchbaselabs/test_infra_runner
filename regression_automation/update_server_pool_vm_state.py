@@ -184,19 +184,23 @@ def update_server_state(cluster, bucket_name, scope_name, collection_name,
         bool: True if update was successful, False otherwise
     """
     if server_ip:
-        select_query = (
-            f"SELECT ipaddr, username, state FROM `{bucket_name}`."
-            f"`{scope_name}`.`{collection_name}` "
-            f"WHERE ipaddr='{server_ip}'"
-        )
-
         if vm_username is None:
+            select_query = (
+                f"SELECT ipaddr, username, state FROM `{bucket_name}`."
+                f"`{scope_name}`.`{collection_name}` "
+                f"WHERE ipaddr='{server_ip}'"
+            )
             update_query = (
                 f"UPDATE `{bucket_name}`.`{scope_name}`.`{collection_name}` "
                 f"SET state='{state}' "
                 f"WHERE ipaddr='{server_ip}' AND state='booked'"
             )
         else:
+            select_query = (
+                f"SELECT ipaddr, username, state FROM `{bucket_name}`."
+                f"`{scope_name}`.`{collection_name}` "
+                f"WHERE ipaddr='{server_ip}' AND username='{vm_username}'"
+            )
             update_query = (
                 f"UPDATE `{bucket_name}`.`{scope_name}`.`{collection_name}` "
                 f"SET state='{state}' "
@@ -227,14 +231,16 @@ def update_server_state(cluster, bucket_name, scope_name, collection_name,
             current_username = row.get('username', 'N/A')
             current_state = row.get('state', 'N/A')
             num_documents += 1
-            log.info(f"\n{current_ip}:\n"
-                     f"  -> Current username ='{current_username}'\n"
-                     f"  -> Current state    ='{current_state}'")
+            log.info(f"\n Current info:\n"
+                     f"  -> IP       = '{current_ip}'\n"
+                     f"  -> Username = '{current_username}'\n"
+                     f"  -> State    = '{current_state}'")
 
             if current_state != "booked":
                 log.critical(f"{current_ip} state='{current_state}' != "
                              f"'booked'")
 
+        log.info(f"Number of documents found: {num_documents}")
         if num_documents == 0:
             log.critical(f"Document not found for server-ip='{server_ip}' "
                          f"or vm-username='{vm_username}'")
