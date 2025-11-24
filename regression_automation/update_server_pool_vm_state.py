@@ -23,6 +23,7 @@ import argparse
 import logging
 import sys
 from datetime import timedelta
+from urllib.parse import quote
 
 from couchbase.auth import PasswordAuthenticator
 from couchbase.cluster import Cluster
@@ -183,6 +184,7 @@ def update_server_state(cluster, bucket_name, scope_name, collection_name,
     Returns:
         bool: True if update was successful, False otherwise
     """
+    encoded_username = quote(vm_username) if vm_username else None
     if server_ip:
         if vm_username is None:
             select_query = (
@@ -199,25 +201,29 @@ def update_server_state(cluster, bucket_name, scope_name, collection_name,
             select_query = (
                 f"SELECT ipaddr, username, state FROM `{bucket_name}`."
                 f"`{scope_name}`.`{collection_name}` "
-                f"WHERE ipaddr='{server_ip}' AND username='{vm_username}'"
+                f"WHERE ipaddr='{server_ip}' AND "
+                f"(username='{vm_username}' or username='{encoded_username}')"
             )
             update_query = (
                 f"UPDATE `{bucket_name}`.`{scope_name}`.`{collection_name}` "
                 f"SET state='{state}' "
-                f"WHERE ipaddr='{server_ip}' AND username='{vm_username}' "
+                f"WHERE ipaddr='{server_ip}' AND "
+                f"(username='{vm_username}' or username='{encoded_username}') "
                 f"AND state='booked'"
             )
     else:
         select_query = (
             f"SELECT ipaddr, username, state FROM `{bucket_name}`."
             f"`{scope_name}`.`{collection_name}` "
-            f"WHERE username='{vm_username}'"
+            f"WHERE (username='{vm_username}' or "
+            f"username='{encoded_username}')"
         )
 
         update_query = (
             f"UPDATE `{bucket_name}`.`{scope_name}`.`{collection_name}` "
             f"SET state='{state}' "
-            f"WHERE username='{vm_username}' AND state='booked'"
+            f"WHERE (username='{vm_username}' or "
+            f"username='{encoded_username}') AND state='booked'"
         )
     log.info(f"Query: {select_query}")
     try:
