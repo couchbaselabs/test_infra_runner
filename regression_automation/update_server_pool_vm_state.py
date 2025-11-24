@@ -190,11 +190,19 @@ def update_server_state(cluster, bucket_name, scope_name, collection_name,
             f"WHERE ipaddr='{server_ip}'"
         )
 
-        update_query = (
-            f"UPDATE `{bucket_name}`.`{scope_name}`.`{collection_name}` "
-            f"SET state='{state}' "
-            f"WHERE ipaddr='{server_ip}' AND state='booked'"
-        )
+        if vm_username is None:
+            update_query = (
+                f"UPDATE `{bucket_name}`.`{scope_name}`.`{collection_name}` "
+                f"SET state='{state}' "
+                f"WHERE ipaddr='{server_ip}' AND state='booked'"
+            )
+        else:
+            update_query = (
+                f"UPDATE `{bucket_name}`.`{scope_name}`.`{collection_name}` "
+                f"SET state='{state}' "
+                f"WHERE ipaddr='{server_ip}' AND username='{vm_username}' "
+                f"AND state='booked'"
+            )
     else:
         select_query = (
             f"SELECT ipaddr, username, state FROM `{bucket_name}`."

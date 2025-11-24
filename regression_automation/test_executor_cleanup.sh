@@ -149,10 +149,11 @@ update_server_pool_vm_state_with_vm_ip() {
         --scope $SERVER_POOL_SCOPE \
         --collection $SERVER_POOL_COLLECTION \
         --server-ip $1 \
-        --state $2
+        --vm-username $2 \
+        --state $3
     status=$?
     if [ $status -ne 0 ]; then
-        echo "WARNING: Failed to update VMs state for IP=$1 to state=$2"
+        echo "WARNING: Failed to update VMs state for IP=$1 username=$2 to state=$3"
     fi
 }
 
@@ -219,16 +220,16 @@ update_server_pool()
         IS_CLEANUP_OK="`cat ${UNINSTALL_OUT} | egrep \"\bDone with cleanup on ${IP}\b\" || true`"
         if [ "${IS_CLEANUP_OK}" = "" ]; then
           echo "$IP - Clean/uninstall didn't completed but Setting the status as available for passed install VM, ignoring the uninstall status."
-          update_server_pool_vm_state_with_vm_ip $IP available
+          update_server_pool_vm_state_with_vm_ip $IP $descriptor available
           mark_ip_released "$IP"
         else
           echo "$IP - Cleanup is ok"
-          update_server_pool_vm_state_with_vm_ip $IP available
+          update_server_pool_vm_state_with_vm_ip $IP $descriptor available
           mark_ip_released "$IP"
         fi
       else
         echo "$IP - No uninstall log is available"
-        update_server_pool_vm_state_with_vm_ip $IP available
+        update_server_pool_vm_state_with_vm_ip $IP $descriptor available
         mark_ip_released "$IP"
       fi
     done
@@ -237,7 +238,7 @@ update_server_pool()
       if is_ip_released "$IP"; then
         continue
       fi
-      update_server_pool_vm_state_with_vm_ip $IP failedInstall
+      update_server_pool_vm_state_with_vm_ip $IP $descriptor failedInstall
       mark_ip_released "$IP"
     done
   fi
@@ -253,7 +254,7 @@ update_server_pool()
         if is_ip_released "$IP"; then
           continue
         fi
-        update_server_pool_vm_state_with_vm_ip $IP failedInstall
+        update_server_pool_vm_state_with_vm_ip $IP $descriptor failedInstall
         mark_ip_released "$IP"
       done
     fi
@@ -265,7 +266,7 @@ update_server_pool()
         if is_ip_released "$IP"; then
           continue
         fi
-        update_server_pool_vm_state_with_vm_ip $IP available
+        update_server_pool_vm_state_with_vm_ip $IP $descriptor available
         mark_ip_released "$IP"
       done
     fi
@@ -291,7 +292,7 @@ update_server_pool()
           fi
           OK_IP=`echo ${SSH_OK} | egrep "${IP} " || true`
           if [ "${OK_IP}" == "" ]; then
-            update_server_pool_vm_state_with_vm_ip $IP failedInstall
+            update_server_pool_vm_state_with_vm_ip $IP $descriptor failedInstall
             mark_ip_released "$IP"
           fi
         done
@@ -307,7 +308,7 @@ update_server_pool()
       if is_ip_released "$IP"; then
         continue
       fi
-      update_server_pool_vm_state_with_vm_ip $IP available
+      update_server_pool_vm_state_with_vm_ip $IP $descriptor available
       mark_ip_released "$IP"
     done
  fi
