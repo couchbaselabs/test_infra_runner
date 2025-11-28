@@ -21,6 +21,9 @@ pipeline {
   parameters {
     string(name: 'JENKINS_SLAVE_LABELS', defaultValue: '')
     string(name: 'BUILD_URL', defaultValue: 'http://172.23.126.166/builds/latestbuilds/couchbase-server/morpheus/3429/couchbase-server-enterprise_8.0.0-3429-linux_amd64.deb')
+    string(name: 'VERSION_NUMBER', defaultValue: '', description: 'Build version number in format 8.1.0-XXXX')
+    string(name: 'SUITE', defaultValue: '')
+    string(name: 'BRANCH', defaultValue: '')
   }
 
   environment {
@@ -37,6 +40,44 @@ pipeline {
   }
 
   stages {
+    stage('Validate Parameters') {
+      steps {
+        script {
+          // Validate required parameters are not null/empty
+          if (!params.JENKINS_SLAVE_LABELS || params.JENKINS_SLAVE_LABELS.trim() == '') {
+            error("JENKINS_SLAVE_LABELS parameter is required and cannot be empty")
+          }
+          
+          if (!params.SUITE || params.SUITE.trim() == '') {
+            error("SUITE parameter is required and cannot be empty")
+          }
+          
+          if (!params.BRANCH || params.BRANCH.trim() == '') {
+            error("BRANCH parameter is required and cannot be empty")
+          }
+          
+          // Validate VERSION_NUMBER is present in BUILD_URL
+          if (!params.VERSION_NUMBER || params.VERSION_NUMBER.trim() == '') {
+            error("VERSION_NUMBER parameter is required and cannot be empty")
+          }
+          
+          if (!params.BUILD_URL || params.BUILD_URL.trim() == '') {
+            error("BUILD_URL parameter is required and cannot be empty")
+          }
+          
+          if (!params.BUILD_URL.contains(params.VERSION_NUMBER)) {
+            error("VERSION_NUMBER '${params.VERSION_NUMBER}' is not present in BUILD_URL '${params.BUILD_URL}'")
+          }
+          
+          echo "Parameter validations passed successfully"
+          echo "JENKINS_SLAVE_LABELS: ${params.JENKINS_SLAVE_LABELS}"
+          echo "SUITE: ${params.SUITE}"
+          echo "BRANCH: ${params.BRANCH}"
+          echo "VERSION_NUMBER: ${params.VERSION_NUMBER}"
+          echo "BUILD_URL: ${params.BUILD_URL}"
+        }
+      }
+    }
 
     stage('Cleanup Slaves') {
         steps {
@@ -48,15 +89,15 @@ pipeline {
         steps {
             script {
                 sh """
-                version_number=$(echo "${params.BUILD_URL}" | sed -E 's/.*couchbase-server-enterprise_([0-9]+\.[0-9]+\.[0-9]+-[0-9]+).*/\1/')
-                echo $version_number
+                version_number=${params.VERSION_NUMBER}
+                echo "Using version: \$version_number"
                 for file in slaves_*.ini; do
-                    if [[ -f "$file" ]]; then
-                        docker run --rm \
-                        -v ${env.WORKSPACE}/$file:/testrunner/$file \
-                        testrunner:install python3 scripts/new_install.py \
-                        -i $file \
-                        -p version=${version_number},timeout=1200,skip_local_download=True,install_tasks=download_build,product=cb,debug_logs=True,${build_url_param} 
+                    if [[ -f "\$file" ]]; then
+                        docker run --rm \\
+                        -v ${env.WORKSPACE}/\$file:/testrunner/\$file \\
+                        testrunner:install python3 scripts/new_install.py \\
+                        -i \$file \\
+                        -p version=\${version_number},timeout=1200,skip_local_download=True,install_tasks=download_build,product=cb,debug_logs=True,${params.BUILD_URL}
                     fi
                 done
                 """
@@ -65,6 +106,19 @@ pipeline {
     }
 
     stage('Trigger Regression Runs') {
+      steps {
+        script {
+          build job: 'trigger_weekly_jobs',
+            parameters: [
+              string(name: 'version_number', value: params.VERSION_NUMBER),
+              string(name: 'kv_storage', value: 'magma'),
+              string(name: 'suite', value: params.SUITE),
+              string(name: 'branch', value: params.BRANCH)
+            ],
+            wait: false
+          echo "Triggered trigger_weekly_jobs with version_number=${params.VERSION_NUMBER}, kv_storage=magma, suite=${params.SUITE}, branch=${params.BRANCH}"
+        }
+      }
     }
   }
 
