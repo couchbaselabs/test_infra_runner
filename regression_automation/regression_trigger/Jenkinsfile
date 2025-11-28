@@ -19,11 +19,11 @@ pipeline {
   }
 
   parameters {
-    string(name: 'JENKINS_SLAVE_LABELS', defaultValue: '')
-    string(name: 'BUILD_URL', defaultValue: 'http://172.23.126.166/builds/latestbuilds/couchbase-server/morpheus/3429/couchbase-server-enterprise_8.0.0-3429-linux_amd64.deb')
     string(name: 'VERSION_NUMBER', defaultValue: '', description: 'Build version number in format 8.1.0-XXXX')
-    string(name: 'SUITE', defaultValue: '')
-    string(name: 'BRANCH', defaultValue: '')
+    string(name: 'BUILD_URL', defaultValue: '', description: 'Build URL to download the build from')
+    string(name: 'SUITE', defaultValue: '12hr_weekly', description: 'Suite to run regression on')
+    string(name: 'BRANCH', defaultValue: 'master', description: 'Branch to run regression on')
+    string(name: 'JENKINS_SLAVE_LABELS', defaultValue: 'dispatcher')
   }
 
   environment {
