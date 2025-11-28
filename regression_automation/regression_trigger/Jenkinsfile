@@ -24,12 +24,16 @@ pipeline {
   }
 
   environment {
-    JENKINS_USER_QA = credentials('jenkins-user-qa')
-    JENKINS_PASSWORD_QA = credentials('jenkins-password-qa')
-    JENKINS_USER_QE = credentials('jenkins-user-qe')
-    JENKINS_PASSWORD_QE = credentials('jenkins-password-qe')
-    SLAVE_USERNAME = credentials('slave-username')
-    SLAVE_PASSWORD = credentials('slave-password')
+    // Use jenkins_qe_infra_user credential for both QA and QE
+    JENKINS_CRED = credentials('jenkins_qe_infra_user')
+    // Set the expected variable names for cleanup_slaves.py
+    JENKINS_USER_QA = "${JENKINS_CRED_USR}"
+    JENKINS_PASS_QA = "${JENKINS_CRED_PSW}"
+    JENKINS_USER_QE = "${JENKINS_CRED_USR}"
+    JENKINS_PASS_QE = "${JENKINS_CRED_PSW}"
+    
+    SLAVE_USERNAME = 'root'
+    SLAVE_PASSWORD = 'couchbase'
   }
 
   stages {
