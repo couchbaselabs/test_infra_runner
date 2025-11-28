@@ -1,6 +1,6 @@
 pipeline {
   agent {
-    label 'trigger-weekly-regression'
+    label 'dispatcher'
   }
 
   options {
