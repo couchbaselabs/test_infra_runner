@@ -7,7 +7,7 @@ import os
 def execute_commands(client, ip):
     yml_path = "/etc/elasticsearch/elasticsearch.yml"
     commands = [
-        "apt get update -y",
+        "apt update -y",
         "apt install curl -y",
         "systemctl stop elasticsearch",
         "systemctl disable elasticsearch",
@@ -18,7 +18,6 @@ def execute_commands(client, ip):
         "wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-8.17.0-amd64.deb",
         "dpkg -i elasticsearch-8.17.0-amd64.deb",
         "systemctl enable elasticsearch",
-        "systemctl start elasticsearch",
         f"grep -q '^xpack.security.enabled:' {yml_path} && " +
         f"sed -i 's/^xpack.security.enabled:.*/xpack.security.enabled: false/' {yml_path} || " +
         f"echo 'xpack.security.enabled: false' | tee -a {yml_path}",
@@ -74,7 +73,7 @@ def ssh_connect_and_run(ip_list, username, password):
 
 
 if __name__ == "__main__":
-    ip_list = []
+    ip_list = ["172.23.221.45"]
 
     username = input("Enter username [default: root]: ") or "root"
     password = getpass("Enter password [default: couchbase]: ") or "couchbase"
