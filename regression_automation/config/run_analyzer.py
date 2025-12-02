@@ -1,5 +1,5 @@
 run_analyzer_db_info = {
-    "host": "172.23.104.162",
+    "host": "172.23.217.21",
     "username": "Administrator",
     "password": "esabhcuoc",
     "bucket_name": "gb_cases",
@@ -10,7 +10,7 @@ run_analyzer_db_info = {
 }
 
 error_db_info = {
-    "host": "172.23.104.162",
+    "host": "172.23.217.21",
     "username": "Administrator",
     "password": "esabhcuoc",
     "bucket_name": "gb_cases",

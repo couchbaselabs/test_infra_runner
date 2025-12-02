@@ -41,7 +41,6 @@ params = {
     "fts_query_limit": 0,
     "cluster_version": None,
     "bkrs_client": None,
-    "ntp": False,
     "install_debug_info": False,
     "use_hostnames": False,
     "force_reinstall": True,
@@ -368,8 +367,10 @@ class NodeHelper:
                 return install_constants.DEFAULT_CLI_PATH["WINDOWS_SERVER"]
 
     def _set_ip_version(self, retries=3):
+        time_sleep = 30
         if params["enable_ipv6"]:
             self.enable_ipv6 = True
+            time_sleep = 60 # need more time due to dns resolution.
             if self.node.ip.startswith("["):
                 hostname = self.node.ip[self.node.ip.find("[") + 1:self.node.ip.find("]")]
             else:
@@ -392,7 +393,8 @@ class NodeHelper:
             ret, err = self.shell.execute_command(cmd)
             if ret == ['0']:
                 log.error(err)
-                time.sleep(30)
+                log.info("sleeping for {0} seconds".format(time_sleep))
+                time.sleep(time_sleep)
                 retries -= 1
             else:
                 break
@@ -452,7 +454,9 @@ class NodeHelper:
         self.rest.init_cluster_memoryQuota(self.node.rest_username, self.node.rest_password, kv_quota)
 
     def wait_for_couchbase_reachable(self):
-        duration, event, timeout = 5, "Waiting {0}s for {1} to be reachable..", 60
+        duration, event, timeout = 5, "Waiting {0}s for {1} to be reachable..", 180
+        if params["use_hostnames"]:
+            timeout = 360
         start_time = time.time()
         log.info("Waiting for couchbase to be reachable")
         while time.time() < start_time + timeout:
@@ -736,8 +740,6 @@ def _parse_user_input():
             params["variant"] = value
         if key == "cluster_version":
             params["cluster_version"] = value
-        if key == "ntp":
-            params["ntp"] = value
         if key == "init_clusters":
             params["init_clusters"] = True if value.lower() == "true" else False
         if key == "install_debug_info":
@@ -844,16 +846,6 @@ def pre_install_steps_columnar(node_helpers):
 def pre_install_steps(node_helpers):
     if not node_helpers:
         return
-
-    # CBQE-6402
-    if "ntp" in params and params["ntp"]:
-        ntp_threads = []
-        for node in node_helpers:
-            ntp_thread = threading.Thread(target=node.shell.is_ntp_installed)
-            ntp_threads.append(ntp_thread)
-            ntp_thread.start()
-        for ntpt in ntp_threads:
-            ntpt.join()
 
     if "tools" in params["install_tasks"]:
         for node in node_helpers:

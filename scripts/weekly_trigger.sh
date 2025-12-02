@@ -3,9 +3,12 @@ set +e     # keep going even if there is a shell error e.g. bad wget
 ${TRIGGER_WEEKLY_JOBS:=false}
 ${TRIGGER_UPGRADE_JOBS:=false}
 ${TRIGGER_WEEKLY_MAGMA_JOBS:=false}
+${TRIGGER_OS_CERT_JOBS:=false}
+
 echo "TRIGGER_WEEKLY_JOBS=$TRIGGER_WEEKLY_JOBS"
 echo "TRIGGER_UPGRADE_JOBS=$TRIGGER_UPGRADE_JOBS"
 echo "TRIGGER_WEEKLY_MAGMA_JOBS=$TRIGGER_WEEKLY_MAGMA_JOBS"
+echo "TRIGGER_OS_CERT_JOBS=$TRIGGER_OS_CERT_JOBS"
 
 sleep_with_message() {
   echo "Sleep for $1 seconds"
@@ -24,15 +27,15 @@ if [ "$TRIGGER_WEEKLY_JOBS" == "true" ]; then
 
   echo "### Running jobs on Debian"
   echo "### Triggering 2i weekly jobs ###"
-  wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=$version_number&suite=$suite&component=2i&url=$url&serverPoolId=regression&branch=$branch&extraParameters=get-cbcollect-info=True${bucket_storage_param}&use_dockerized_dispatcher=true" -O trigger.log
+  wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=$version_number&suite=$suite&component=2i&url=$url&serverPoolId=regression&branch=$branch&extraParameters=get-cbcollect-info=True${bucket_storage_param}" -O trigger.log
   sleep_with_message 120
 
   echo "### Triggering n/w failover and slow disk autofailover scenarios ###"
-  wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=$version_number&suite=$suite&component=failover_network&url=$url&serverPoolId=failover&branch=$branch&extraParameters=get-cbcollect-info=True${bucket_storage_param}&use_dockerized_dispatcher=true" -O trigger.log
+  wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=$version_number&suite=$suite&component=failover_network&url=$url&serverPoolId=failover&branch=$branch&extraParameters=get-cbcollect-info=True${bucket_storage_param}" -O trigger.log
   sleep_with_message 900
 
   echo "### Triggering Durability weekly jobs ###"
-  wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=$version_number&suite=$suite&component=durability,transaction&url=$url&serverPoolId=regression&branch=$branch&extraParameters=get-cbcollect-info=True${bucket_storage_param}&use_dockerized_dispatcher=true" -O trigger.log
+  wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=$version_number&suite=$suite&component=durability,transaction&url=$url&serverPoolId=regression&branch=$branch&extraParameters=get-cbcollect-info=True${bucket_storage_param}" -O trigger.log
   sleep_with_message 600
 
   echo "### Triggering XDCR weekly jobs ###"
@@ -40,7 +43,7 @@ if [ "$TRIGGER_WEEKLY_JOBS" == "true" ]; then
   sleep_with_message 600
 
   echo "### Triggering query,ephemeral,backup_recovery,logredaction,cli weekly jobs, cbo_focus_suites,join_enum ###"
-  wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=$version_number&suite=$suite&component=query&url=$url&serverPoolId=regression&branch=$branch&extraParameters=get-cbcollect-info=True${bucket_storage_param}&use_dockerized_dispatcher=true" -O trigger.log
+  wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=$version_number&suite=$suite&component=query&url=$url&serverPoolId=regression&branch=$branch&extraParameters=get-cbcollect-info=True${bucket_storage_param}" -O trigger.log
   #cgroups tests added for GSI
   wget "http://qa.sc.couchbase.com/job/ubuntu-gsi_cgroup-limits/buildWithParameters?token=trigger_weekly_cgroups&version_number=$version_number" -O trigger.log
   wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=$version_number&suite=$suite&component=ephemeral,backup_recovery&url=$url&serverPoolId=regression&branch=$branch&extraParameters=get-cbcollect-info=True${bucket_storage_param}" -O trigger.log
@@ -60,8 +63,8 @@ if [ "$TRIGGER_WEEKLY_JOBS" == "true" ]; then
 
   sleep_with_message 600
 
-  echo "### Triggering security weekly jobs ###"
-  wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=$version_number&suite=$suite&component=security&url=$url&serverPoolId=regression&branch=$branch&extraParameters=get-cbcollect-info=True${bucket_storage_param}" -O trigger.log
+  echo "### Triggering nserv_sec weekly jobs ###"
+  wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=$version_number&suite=$suite&component=nserv_sec&url=$url&serverPoolId=regression&branch=$branch&extraParameters=get-cbcollect-info=True${bucket_storage_param}" -O trigger.log
 
   # echo "### Triggering RBAC Upgrade jobs ###"
   # wget  "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=$version_number&suite=12hour&component=cli&subcomponent=offline-upgrade-rbac&url=$url&serverPoolId=regression&branch=$branch&addPoolId=elastic-fts"
@@ -74,10 +77,10 @@ if [ "$TRIGGER_WEEKLY_JOBS" == "true" ]; then
   wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=$version_number&suite=$suite&component=ce_only&subcomponent=1a,1b&url=$url&serverPoolId=regression&branch=$branch&executor_job_parameters=installParameters=edition=community" -O trigger.log
 
   echo "### Triggering nserv weekly jobs ###"
-  wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=$version_number&suite=$suite&component=nserv&url=$url&serverPoolId=regression&branch=$branch&extraParameters=get-cbcollect-info=True${bucket_storage_param}&use_dockerized_dispatcher=true" -O trigger.log
+  wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=$version_number&suite=$suite&component=nserv&url=$url&serverPoolId=regression&branch=$branch&extraParameters=get-cbcollect-info=True${bucket_storage_param}" -O trigger.log
 
   echo "### Triggering tunable,epeng,rza weekly jobs ###"
-  wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=$version_number&suite=$suite&component=tunable,epeng,rza&url=$url&serverPoolId=regression&branch=$branch&extraParameters=get-cbcollect-info=True${bucket_storage_param}&use_dockerized_dispatcher=true" -O trigger.log
+  wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=$version_number&suite=$suite&component=tunable,epeng,rza&url=$url&serverPoolId=regression&branch=$branch&extraParameters=get-cbcollect-info=True${bucket_storage_param}" -O trigger.log
 
   echo "### Triggering CE weekly jobs ###"
   wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=$version_number&suite=ce&component=query&url=$url&serverPoolId=regression&branch=$branch&executor_job_parameters=installParameters=edition=community${bucket_storage_with_extra_params}" -O trigger.log
@@ -86,8 +89,11 @@ if [ "$TRIGGER_WEEKLY_JOBS" == "true" ]; then
   echo "### Triggering RQG jobs ###"
   wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=$version_number&suite=$suite&component=rqg&url=$url&serverPoolId=regression&branch=${branch}${bucket_storage_with_extra_params}" -O trigger.log
 
+  echo "### Triggering AiQG jobs ###"
+  wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=$version_number&suite=$suite&component=aiqg&url=$url&serverPoolId=regression&branch=$branch&extraParameters=get-cbcollect-info=True${bucket_storage_param}" -O trigger.log
+
   echo "### Triggering Collections weekly jobs ###"
-  wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=$version_number&suite=$suite&component=collections&url=$url&serverPoolId=regression&branch=$branch&extraParameters=get-cbcollect-info=True,log_level=info${bucket_storage_param}&use_dockerized_dispatcher=true" -O trigger.log
+  wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=$version_number&suite=$suite&component=collections&url=$url&serverPoolId=regression&branch=$branch&extraParameters=get-cbcollect-info=True,log_level=info${bucket_storage_param}" -O trigger.log
   sleep_with_message 600
 
   # echo "### Triggering IPV6 weekly jobs ###"
@@ -170,40 +176,156 @@ fi
 if [ "$TRIGGER_UPGRADE_JOBS" == "true" ]; then
   wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=12hr_upgrade&component=upgrade&subcomponent=None&url=&serverPoolId=regression&addPoolId=elastic-fts&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info,bucket_storage=couchstore" -O trigger1.log
   sleep_with_message 300
- 
+
   wget "http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=12hr_upgrade&component=2i,analytics,cli,backup_recovery,fts,query,xdcr&subcomponent=None&url=&serverPoolId=regression&addPoolId=elastic-fts&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info,bucket_storage=couchstore" -O trigger1.log
   sleep_with_message 300
 fi
 
 # Following block is from 'trigger_weekly_magma' job
 if [ "$TRIGGER_WEEKLY_MAGMA_JOBS" == "true" ]; then
-  wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=magmaWeekly&component=magma&url=&serverPoolId=magmanew&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info,enable_encryption_at_rest=True,enable_audit_encryption_at_rest=True,enable_log_encryption_at_rest=False,enable_config_encryption_at_rest=True,encryptionAtRestDekRotationInterval=60,encryption_at_rest_dek_lifetime=120,bucket_num_vb=1024" -O trigger1.log
+  wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=magmaWeekly&component=magma&url=&serverPoolId=magmanew&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info,enable_encryption_at_rest=True,enable_audit_encryption_at_rest=True,enable_log_encryption_at_rest=False,enable_config_encryption_at_rest=True,encryptionAtRestDekRotationInterval=300,encryption_at_rest_dek_lifetime=600,bucket_num_vb=128" -O trigger1.log
   sleep_with_message 300
- 
-  wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=12hr_weekly&component=magma&url=&serverPoolId=magmareg&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info,bucket_storage=magma,enable_encryption_at_rest=True,enable_audit_encryption_at_rest=True,enable_log_encryption_at_rest=False,enable_config_encryption_at_rest=True,encryptionAtRestDekRotationInterval=60,encryption_at_rest_dek_lifetime=120,bucket_num_vb=1024" -O trigger1.log
+
+  wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=12hr_weekly&component=magma&url=&serverPoolId=magmareg&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info,bucket_storage=magma,enable_encryption_at_rest=True,enable_audit_encryption_at_rest=True,enable_log_encryption_at_rest=False,enable_config_encryption_at_rest=True,encryptionAtRestDekRotationInterval=300,encryption_at_rest_dek_lifetime=600,bucket_num_vb=128" -O trigger1.log
   sleep_with_message 300
- 
-  wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=magmaUpgrade&component=magma&url=&serverPoolId=magmaUpgrade&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info" -O trigger1.log
+
+  wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=magmaUpgrade&component=magma&url=&serverPoolId=magmaUpgrade&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info,retry_get_process_num=500" -O trigger1.log
   sleep_with_message 86400
 
   wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=guardrails&component=nserv&url=&serverPoolId=magmaUpgrade&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info&serverType=ON_PREM_PROVISIONED" -O trigger1.log
   sleep_with_message 300
 
-  wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=magmaWeekly&component=backup_recovery&url=&serverPoolId=magmareg&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info,enable_cdc=True" -O trigger1.log
+  wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=magmaWeekly&component=backup_recovery&url=&serverPoolId=magmareg&branch=${branch}&extraParameters=get-cbcollect-info=True,enable_cdc=True" -O trigger1.log
   sleep_with_message 300
 
-  wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=magmaWeekly&component=xdcr&url=&serverPoolId=magmareg&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info,enable_cdc=True" -O trigger1.log
+  wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=magmaWeekly&component=xdcr&url=&serverPoolId=magmareg&branch=${branch}&extraParameters=get-cbcollect-info=True,enable_cdc=True" -O trigger1.log
   sleep_with_message 300
 
-  wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=magmaWeekly&component=2i&url=&serverPoolId=magmareg&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info,enable_cdc=True" -O trigger1.log
+  wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=magmaWeekly&component=2i&url=&serverPoolId=magmareg&branch=${branch}&extraParameters=get-cbcollect-info=True,enable_cdc=True" -O trigger1.log
   sleep_with_message 300
 
-  wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=magmaWeekly&component=eventing&url=&serverPoolId=magmareg&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info,enable_cdc=True" -O trigger1.log
+  wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=magmaWeekly&component=eventing&url=&serverPoolId=magmareg&branch=${branch}&extraParameters=get-cbcollect-info=True,enable_cdc=True" -O trigger1.log
   sleep_with_message 300
 
-  wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=magmaWeekly&component=fts&url=&serverPoolId=magmareg&addPoolId=elastic-fts&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info,enable_cdc=True" -O trigger1.log
+  wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=magmaWeekly&component=fts&url=&serverPoolId=magmareg&addPoolId=elastic-fts&branch=${branch}&extraParameters=get-cbcollect-info=True,enable_cdc=True" -O trigger1.log
   sleep_with_message 300
 
-  wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=magmaWeekly&component=query&url=&serverPoolId=magmareg&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info,enable_cdc=True" -O trigger1.log
+  wget "http://qe-jenkins1.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters?token=extended_sanity&OS=debian&version_number=${version_number}&suite=magmaWeekly&component=query&url=&serverPoolId=magmareg&branch=${branch}&extraParameters=get-cbcollect-info=True,enable_cdc=True" -O trigger1.log
   sleep_with_message 300
+fi
+
+if [ "$TRIGGER_OS_CERT_JOBS" == "true" ]; then
+  # Set os_specific flags default to false if not set
+  ${Ubuntu24:=false}
+  ${Ubuntu24_arm:=false}
+  ${al2023:=false}
+  ${al2023_arm:=false}
+  ${rhel9:=false}
+  ${oel8:=false}
+  ${alma9:=false}
+  ${alma10:=false}
+  ${rhel10:=false}
+  ${oel10:=false}
+  ${rocky10:=false}
+  ${debian13:=false}
+  ${ubuntu24_nonroot:=false}
+  ${windows22:=false}
+
+  echo "### Triggering OS Certification jobs ###"
+  base_url="http://qa.sc.couchbase.com/job/test_suite_dispatcher_aws/buildWithParameters"
+  default_dispatcher="http://qa.sc.couchbase.com/job/test_suite_dispatcher/buildWithParameters"
+
+  common_params="token=extended_sanity&version_number=${version_number}&suite=12hr_weekly&component=os_certify&subcomponent=None&url=&serverPoolId=os_certification&addPoolId=elastic-fts&branch=${branch}&extraParameters=get-cbcollect-info=True,infra_log_level=info,log_level=info,bucket_storage=couchstore"
+  linux_common_params="$common_params&executor_job_parameters=installParameters=use_hostnames=true"
+  windows_common_params="$common_params&fresh_run=true&use_dynamic_vms=true&executor_job_parameters=installParameters=timeout=1200,skip_local_download=True"
+
+  if [ "${Ubuntu24}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=ubuntu24" -O trigger.log
+    sleep 120
+  fi
+
+  if [ "${Ubuntu24_arm}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=ubuntu24&architecture=aarch64" -O trigger.log
+    sleep 120
+  fi
+
+  if [ "${al2023}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=al2023" -O trigger.log
+    sleep 120
+  fi
+
+  if [ "${al2023_arm}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=al2023&architecture=aarch64" -O trigger.log
+    sleep 120
+  fi
+
+  if [ "${rhel9}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=rhel9" -O trigger.log
+    sleep 120
+  fi
+
+  if [ "${oel8}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=oel8" -O trigger.log
+    sleep 120
+  fi
+
+  if [ "${alma9}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=alma9" -O trigger.log
+    sleep 120
+  fi
+
+  if [ "${alma10}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=alma10" -O trigger.log
+    sleep 120
+  fi
+
+  if [ "${rhel10}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=rhel10" -O trigger.log
+    sleep 120
+  fi
+
+  if [ "${oel10}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=oel10" -O trigger.log
+    sleep 120
+  fi
+
+  if [ "${rocky10}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=rocky10" -O trigger.log
+    sleep 120
+  fi
+
+  if [ "${debian13}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=debian13" -O trigger.log
+    sleep 120
+  fi
+
+  if [ "${ubuntu24_nonroot}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=ubuntu24nonroot" -O trigger.log
+    sleep 120
+  fi
+
+  if [ "${windows22}" = true ]; then
+    wget "${default_dispatcher}?${windows_common_params}&OS=windows22" -O trigger.log
+    sleep 120
+  fi
+
+  if [ "${oel9}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=oel9" -O trigger.log
+    sleep 120
+  fi
+
+  if [ "${rocky9}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=rocky9" -O trigger.log
+    sleep 120
+  fi
+
+  if [ "${debian12}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=debian12" -O trigger.log
+    sleep 120
+  fi
+
+  if [ "${suse15}" = true ]; then
+    wget "${base_url}?${linux_common_params}&OS=suse15" -O trigger.log
+    sleep 120
+  fi
 fi

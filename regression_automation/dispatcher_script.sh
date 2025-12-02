@@ -31,9 +31,6 @@ if [ ${use_dynamic_vms} == true ]; then
     exit 1
   fi
 
-  # Force avoid using docker if dynamic vm dispatcher is selected
-  use_dockerized_dispatcher=false
-
   # using CHECK_SSH as false since that was default in dispatcher_dynvm job as well
   CHECK_SSH=False
   SERVER_MGR_OPTIONS="-x 172.23.121.132:5000 -z 2000 -w $CHECK_SSH --is_dynamic_vms true"
@@ -96,20 +93,20 @@ if [ "$use_dockerized_dispatcher" == "true" ]; then
       echo "ERROR: Docker not found!!"
       exit 1
   fi
-  docker_img=dispatcher:sdk3
+  docker_img=dispatcher:sdk4
   docker_img_id=$(docker images -q $docker_img)
   if [ "$docker_img_id" == "" ]; then
-    wget https://raw.githubusercontent.com/couchbaselabs/test_infra_runner/refs/heads/master/regression_automation/Dockerfile_dispatcher_sdk3 -O Dockerfile
+    wget https://raw.githubusercontent.com/couchbaselabs/test_infra_runner/refs/heads/master/regression_automation/Dockerfile_dispatcher_sdk4 -O Dockerfile
     docker build . --tag $docker_img
   fi
   container_name=dispatcher_${BUILD_ID}
   #exe_str="docker run --name $container_name $docker_img --build_url $BUILD_URL --job_url $JOB_URL ${rerun_condition}"
 
-  # SDK3: Use this line while switching back to sdk3 dispacher (if sdk4 issues are seen)
-  exe_str="docker run --name $container_name $docker_img --build_url $BUILD_URL --job_url $JOB_URL"
+  # SDK3: Use this line while switching back to sdk3 dispatcher (if sdk4 issues are seen)
+  # exe_str="docker run --name $container_name $docker_img --build_url $BUILD_URL --job_url $JOB_URL"
 
   # SDK4: String for sdk4 based dispatcher to use transactions to book servers locally (--log_level options is new in this)
-  # exe_str="docker run -m 256m --security-opt seccomp=unconfined --name $container_name $docker_img --build_url $BUILD_URL --job_url $JOB_URL --log_level info"
+  exe_str="docker run -m 256m --security-opt seccomp=unconfined --name $container_name $docker_img --build_url $BUILD_URL --job_url $JOB_URL --log_level info"
 else
   echo "Cloning testrunner repo"
   rm -rf testrunner

@@ -1,8 +1,14 @@
 #set +e
 echo the descriptor is $descriptor
 echo new state is $newState
-#curl http://172.23.104.162:8081/releaseservers/${descriptor}/${newState}
 echo upstream build number is $UPSTREAM_BUILD_NUMBER
+
+export SERVER_POOL_CLUSTER_IP="172.23.217.21"
+export SERVER_POOL_CLUSTER_USERNAME="Administrator"
+export SERVER_POOL_CLUSTER_PASSWORD="esabhcuoc"
+export SERVER_POOL_BUCKET="QE-server-pool"
+export SERVER_POOL_SCOPE="_default"
+export SERVER_POOL_COLLECTION="_default"
 
 # Global IP tracking to prevent duplicate releases across all sections
 RELEASED_IPS=""
@@ -12,10 +18,10 @@ is_ip_released() {
   local ip=$1
   # Simple and reliable check: if RELEASED_IPS contains the exact IP
   case " $RELEASED_IPS " in
-    *" $ip "*) 
+    *" $ip "*)
       echo "IP $ip already released, skipping duplicate release"
       return 0 ;;  # IP found
-    *) 
+    *)
       return 1 ;;  # IP not found
   esac
 }
@@ -68,7 +74,7 @@ if [ "${is_dynamic_vms}" == "true" ]; then
 
   # Update for add pool servers to release the
   # additional servers booked from the regular pool
-  QE_SERVER_MANAGER_URL="http://172.23.104.162:8081"
+  QE_SERVER_MANAGER_URL="http://$SERVER_POOL_CLUSTER_IP:8081"
   echo "addPoolServers=$addPoolServers"
   if [ ! "$addPoolServers" = ""  -a ! "$addPoolServers" = "None" ]; then
     for IP in `echo ${addPoolServers}|sed -e 's/"//g' -e 's/,/ /g'`
@@ -134,6 +140,39 @@ cb_cluster_cleanup()
   fi
 }
 
+update_server_pool_vm_state_with_vm_ip() {
+    python3 update_server_pool_vm_state.py \
+        --cluster-ip $SERVER_POOL_CLUSTER_IP \
+        --username $SERVER_POOL_CLUSTER_USERNAME \
+        --password $SERVER_POOL_CLUSTER_PASSWORD \
+        --bucket $SERVER_POOL_BUCKET \
+        --scope $SERVER_POOL_SCOPE \
+        --collection $SERVER_POOL_COLLECTION \
+        --server-ip $1 \
+        --vm-username $2 \
+        --state $3
+    status=$?
+    if [ $status -ne 0 ]; then
+        echo "WARNING: Failed to update VMs state for IP=$1 username=$2 to state=$3"
+    fi
+}
+
+update_server_pool_vm_state_with_username() {
+    python3 update_server_pool_vm_state.py \
+        --cluster-ip $SERVER_POOL_CLUSTER_IP \
+        --username $SERVER_POOL_CLUSTER_USERNAME \
+        --password $SERVER_POOL_CLUSTER_PASSWORD \
+        --bucket $SERVER_POOL_BUCKET \
+        --scope $SERVER_POOL_SCOPE \
+        --collection $SERVER_POOL_COLLECTION \
+        --vm-username $1 \
+        --state $2
+    status=$?
+    if [ $status -ne 0 ]; then
+        echo "WARNING: Failed to update VMs state for username=$1 to state=$2"
+    fi
+}
+
 get_url()
 {
   URL=$1
@@ -159,7 +198,7 @@ get_url()
 update_server_pool()
 {
   echo "*** Server Pool release ***"
-  QE_SERVER_MANAGER_URL="http://172.23.104.162:8081"
+  QE_SERVER_MANAGER_URL="http://$SERVER_POOL_CLUSTER_IP:8081"
   CURL="curl -gs --retry 999 --retry-max-time 2"
 
   if [ -f ${PARENT_LOG} ]; then
@@ -175,24 +214,22 @@ update_server_pool()
       if is_ip_released "$IP"; then
         continue
       fi
-      
+
       # See CBQE-5309
       if [ -f ${UNINSTALL_OUT} ]; then
         IS_CLEANUP_OK="`cat ${UNINSTALL_OUT} | egrep \"\bDone with cleanup on ${IP}\b\" || true`"
         if [ "${IS_CLEANUP_OK}" = "" ]; then
-          #echo "Clean/uninstall on ${IP} didn't completed, marking as failedInstall. $CURL ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/failedInstall"
-          #$CURL ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/failedInstall
-          echo "Clean/uninstall on ${IP} didn't completed but Setting the status as available for passed install VM, ignoring the uninstall status."
-          get_url ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/available
+          echo "$IP - Clean/uninstall didn't completed but Setting the status as available for passed install VM, ignoring the uninstall status."
+          update_server_pool_vm_state_with_vm_ip $IP $descriptor available
           mark_ip_released "$IP"
         else
-          echo "Cleanup is ok. $CURL ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/available"
-          get_url ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/available
+          echo "$IP - Cleanup is ok"
+          update_server_pool_vm_state_with_vm_ip $IP $descriptor available
           mark_ip_released "$IP"
         fi
       else
-        echo "No uninstall log is available. $CURL ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/available"
-        get_url ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/available
+        echo "$IP - No uninstall log is available"
+        update_server_pool_vm_state_with_vm_ip $IP $descriptor available
         mark_ip_released "$IP"
       fi
     done
@@ -201,8 +238,7 @@ update_server_pool()
       if is_ip_released "$IP"; then
         continue
       fi
-      echo "$CURL ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/failedInstall"
-      get_url ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/failedInstall
+      update_server_pool_vm_state_with_vm_ip $IP $descriptor failedInstall
       mark_ip_released "$IP"
     done
   fi
@@ -218,8 +254,7 @@ update_server_pool()
         if is_ip_released "$IP"; then
           continue
         fi
-        echo "get_url ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/failedInstall"
-        get_url ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/failedInstall
+        update_server_pool_vm_state_with_vm_ip $IP $descriptor failedInstall
         mark_ip_released "$IP"
       done
     fi
@@ -231,8 +266,7 @@ update_server_pool()
         if is_ip_released "$IP"; then
           continue
         fi
-        echo "get_url ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/available"
-        get_url ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/available
+        update_server_pool_vm_state_with_vm_ip $IP $descriptor available
         mark_ip_released "$IP"
       done
     fi
@@ -241,7 +275,7 @@ update_server_pool()
       if [ "${newState}" = '$newState' ]; then
         newState="available"
       fi
-      get_url ${QE_SERVER_MANAGER_URL}/releaseservers/${descriptor}/${newState}
+      update_server_pool_vm_state_with_username $descriptor $newState
     else
       echo "Warning: Partial SSH OK/FAILED IPs found..."
       SSH_ALL="`egrep 'SSH Connecting to' ${PARENT_LOG}|grep -oP '(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'|sort|uniq|| true` "
@@ -258,9 +292,7 @@ update_server_pool()
           fi
           OK_IP=`echo ${SSH_OK} | egrep "${IP} " || true`
           if [ "${OK_IP}" == "" ]; then
-            echo "ssh not ok: ${IP}"
-            echo "get_url ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/failedInstall"
-            get_url ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/failedInstall
+            update_server_pool_vm_state_with_vm_ip $IP $descriptor failedInstall
             mark_ip_released "$IP"
           fi
         done
@@ -276,8 +308,7 @@ update_server_pool()
       if is_ip_released "$IP"; then
         continue
       fi
-	    echo $CURL ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/available
-      get_url ${QE_SERVER_MANAGER_URL}/releaseip/${IP}/available
+      update_server_pool_vm_state_with_vm_ip $IP $descriptor available
       mark_ip_released "$IP"
     done
  fi

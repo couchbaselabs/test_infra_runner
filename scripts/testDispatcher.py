@@ -28,12 +28,12 @@ import capella
 # need a timeout param
 
 POLL_INTERVAL = 60
-SERVER_MANAGER = '172.23.104.162:8081'
-ADDL_SERVER_MANAGER = '172.23.104.162:8081'
-TEST_SUITE_DB = '172.23.104.162'
+TEST_SUITE_DB = '172.23.217.21'
+SERVER_MANAGER = '%s:8081' % TEST_SUITE_DB
+ADDL_SERVER_MANAGER = '%s:8081' % TEST_SUITE_DB
 SERVER_MANAGER_USER_NAME = 'Administrator'
 SERVER_MANAGER_PASSWORD = "esabhcuoc"
-TIMEOUT = 60
+TIMEOUT = 300
 SSH_NUM_RETRIES = 3
 SSH_POLL_INTERVAL = 20
 
@@ -167,6 +167,9 @@ def get_servers(options=None, descriptor="", test=None, how_many=0, is_addl_pool
         return json.loads(content2), None
     else:
         return json.loads(content1), None
+    if os_version and "windows" in os_version.lower():
+        print("Sleeping for 5 minutes for windows vm launch completion")
+        time.sleep(300)
 
 
 def check_servers_via_ssh(servers=[], test=None):
@@ -470,11 +473,11 @@ def main():
                       default="all")
     parser.add_option('-k','--include_tests', dest='include_tests', default=None)
     parser.add_option('-x','--server_manager', dest='SERVER_MANAGER',
-                      default='172.23.104.162:8081')
+                      default='172.23.217.21:8081')
     parser.add_option('--addl_server_manager', dest='ADDL_SERVER_MANAGER',
-                      default='172.23.104.162:8081')
+                      default='172.23.217.21:8081')
     parser.add_option('--test_suite_db', dest="TEST_SUITE_DB",
-                      default='172.23.104.162')
+                      default='172.23.217.21')
     parser.add_option('-z', '--timeout', dest='TIMEOUT', default = '60')
     parser.add_option('-w', '--check_vm', dest='check_vm', default="False")
     parser.add_option('--ssh_poll_interval', dest='SSH_POLL_INTERVAL', default="20")
@@ -488,6 +491,7 @@ def main():
     parser.add_option('--capella_token', dest='capella_token', default=None)
     parser.add_option('--sleep_between_trigger', dest='sleep_between_trigger', default=0)
     parser.add_option('--columnar_version', dest='columnar_version', default=0)
+    parser.add_option('--is_dynamic_vms', dest='is_dynamic_vms', default="false")
 
     # set of parameters for testing purposes.
     #TODO: delete them after successful testing
@@ -517,6 +521,7 @@ def main():
     print(('rerun params are', options.rerun_params))
     print(('Server Manager is ', options.SERVER_MANAGER))
     print(('Timeout is ', options.TIMEOUT))
+    print(('is_dynamic_vms is ', options.is_dynamic_vms))
 
     if options.SERVER_MANAGER:
         SERVER_MANAGER=options.SERVER_MANAGER
@@ -646,11 +651,13 @@ def main():
 
     # this are VM/Docker dependent - or maybe not
     launchString = '/buildWithParameters?token=test_dispatcher&' + \
-                   'version_number={0}&confFile={1}&descriptor={2}&component={3}&subcomponent={4}&' + \
-                   'iniFile={5}&parameters={6}&os={7}&initNodes={' \
-                   '8}&installParameters={9}&branch={10}&slave={' \
-                   '11}&owners={12}&mailing_list={13}&mode={14}&timeout={15}&' \
-                   'columnar_version_number={16}&mixed_build_config={17}'
+                   'version_number={0}&confFile={1}&descriptor={2}&' \
+                   'component={3}&subcomponent={4}&' \
+                   'iniFile={5}&parameters={6}&os={7}&initNodes={8}&' \
+                   'installParameters={9}&branch={10}&slave={11}&' \
+                   'owners={12}&mailing_list={13}&mode={14}&timeout={15}&' \
+                   'columnar_version_number={16}&mixed_build_config={17}&' \
+                   'is_dynamic_vms={18}'
     if options.rerun_params:
         rerun_params = options.rerun_params.strip('\'')
         launchString = launchString + '&' + urllib.parse.urlencode({
@@ -721,7 +728,8 @@ def main():
                                           urllib.parse.quote(testsToLaunch[i]['mailing_list']),
                                           testsToLaunch[i]['mode'], testsToLaunch[i]['timeLimit'],
                                           options.columnar_version,
-                                          testsToLaunch[i]['mixed_build_config'])
+                                          testsToLaunch[i]['mixed_build_config'],
+                                          options.is_dynamic_vms)
                 url = url + '&dispatcher_params=' + urllib.parse.urlencode(
                     {"parameters": currentExecutorParams})
                 # optional add [-docker] [-Jenkins extension] - TBD duplicate
@@ -792,16 +800,21 @@ def main():
                     break
 
             if haveTestToLaunch:
-                print("\n\n *** Dispatching job#{} of {} with {} servers (total={}) "
-                      "and {} additional servers(total={}) :  {}-{} with {}\n"
-                      .format(job_index, total_jobs_count,
-                              testsToLaunch[i]['serverCount'],
-                              total_servers_being_used,
-                              testsToLaunch[i]['addPoolServerCount'],
-                              total_addl_servers_being_used,
-                              testsToLaunch[i]['component'],
-                              testsToLaunch[i]['subcomponent'],
-                              testsToLaunch[i]['framework'], ))
+                print("\n\n *** Dispatching job#{} of {} with {} servers (total={}) and {} "
+                        "additional "
+                        "servers(total={}) :  {}-{} with {}\n".format(job_index, total_jobs_count,
+                                                                    testsToLaunch[i][
+                                                                        'serverCount'],
+                                                                    total_servers_being_used,
+                                                                    testsToLaunch[i][
+                                                                        'addPoolServerCount'],
+                                                                    total_addl_servers_being_used,
+                                                                    testsToLaunch[i][
+                                                                        'component'],
+                                                                    testsToLaunch[i][
+                                                                        'subcomponent'],
+                                                                    testsToLaunch[i][
+                                                                        'framework'], ))
                 if options.noLaunch:
                     job_index += 1
                     testsToLaunch.pop(i)
@@ -948,7 +961,8 @@ def main():
                                             testsToLaunch[i]['mode'],
                                             testsToLaunch[i]['timeLimit'],
                                             options.columnar_version,
-                                            testsToLaunch[i]['mixed_build_config'])
+                                            testsToLaunch[i]['mixed_build_config'],
+                                            options.is_dynamic_vms)
                 url = url + '&dispatcher_params=' + \
                                 urllib.parse.urlencode({"parameters":
                                                 currentExecutorParams})
